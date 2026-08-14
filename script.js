@@ -567,7 +567,8 @@ button:hover { transform: translateY(-2px); }`,
       codeEls.html.textContent = result.html;
       if (window.hljs) hljs.highlightElement(codeEls.html);
     } else {
-      await typeCode(codeEls.html, result.html);
+      await typeCode
+       await typeCode(codeEls.html, result.html);
     }
 
     const totalLines = (result.html.split("\n").length + result.css.split("\n").length + result.js.split("\n").length);
