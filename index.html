@@ -3,46 +3,48 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Extract. — Turn any website into clean source code</title>
-<meta name="description" content="Paste a URL. Get clean, organized HTML, CSS and JavaScript instantly — with live preview, syntax highlighting and one-click ZIP export.">
+<title>Source X Sage — Extract • Analyze • Export Website Source Code</title>
+<meta name="description" content="Extract, analyze, and export clean HTML, CSS, JS, tech stack, and metadata from any website instantly.">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/base16/default-dark.min.css">
 <link rel="stylesheet" href="style.css">
 </head>
 <body class="pre-load">
 
-<!-- ambient background light — very subtle, non-interactive -->
+<div class="bg-noise" aria-hidden="true"></div>
 <div class="ambient-glow" aria-hidden="true"></div>
 
-<!-- splash screen -->
 <div class="page-loader" id="pageLoader">
   <div class="loader-inner">
-    <div class="loader-logo">extract<span class="dot">.</span></div>
+    <div class="loader-logo">SOURCE<span class="glow-text">X</span>SAGE<span class="dot">.</span></div>
+    <div class="loader-status" id="loaderStatus">INITIALIZING CORE ENGINE...</div>
     <div class="loader-line"><span id="loaderFill"></span></div>
     <div class="loader-percent" id="loaderPercent">0%</div>
   </div>
 </div>
 
-<!-- interactive cursor / touch glow -->
 <div class="cursor-glow" id="cursorGlow" aria-hidden="true">
   <div class="cursor-glow-outer"></div>
   <div class="cursor-glow-core"></div>
 </div>
 
-<!-- ============ NAV ============ -->
 <nav class="nav" id="nav">
   <div class="wrap nav-inner">
-    <a href="#top" class="logo">extract<span class="dot">.</span></a>
+    <a href="#top" class="logo">
+      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>
+      <span>SOURCE<span class="highlight">X</span>SAGE</span>
+    </a>
     <div class="nav-links">
-      <a href="#scanner">Product</a>
+      <a href="#scanner">Scanner</a>
+      <a href="#analysis">Analysis</a>
       <a href="#features">Features</a>
       <a href="#faq">FAQ</a>
     </div>
     <div class="nav-cta-wrap">
-      <a href="#scanner" class="btn btn-primary btn-sm">Get started</a>
+      <a href="#scanner" class="btn btn-primary btn-sm btn-neon">Launch Extractor</a>
       <button class="nav-burger" id="burger" aria-label="Menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
       </button>
@@ -50,278 +52,203 @@
   </div>
 </nav>
 
-<!-- ============ HERO ============ -->
 <section class="hero" id="top">
   <div class="hero-glow"></div>
   <div class="hero-bg"></div>
   <div class="hero-scanline"></div>
   <div class="wrap hero-inner">
-    <div class="eyebrow entrance entrance-1">SOURCE CODE EXTRACTION</div>
-    <h1 class="entrance entrance-2">Every website has code.<br><span class="muted">Now you can see it.</span></h1>
-    <p class="entrance entrance-3">Paste any URL and get clean, organized HTML, CSS and JavaScript — extracted, highlighted, and ready to reuse in seconds.</p>
+    <div class="brand-tag entrance entrance-1">
+      <span class="pulse-dot"></span> Extract • Analyze • Export Website Source Code
+    </div>
+    <h1 class="entrance entrance-2">Deconstruct Any Web Page.<br><span class="muted-glow">Instant Intelligence & Source Code.</span></h1>
+    <p class="entrance entrance-3">Paste a URL to extract clean source code, detect frameworks, inspect SEO tags, and review security headers in real-time.</p>
+    
     <div class="hero-cta entrance entrance-4">
-      <a href="#scanner" class="btn btn-primary">Extract a website →</a>
-      <a href="#features" class="btn btn-ghost">See how it works</a>
+      <a href="#scanner" class="btn btn-primary btn-neon">Start Extracting Now →</a>
+      <a href="#features" class="btn btn-ghost">Explore Features</a>
+    </div>
+
+    <div class="hero-stats entrance entrance-4">
+      <div class="stat-card">
+        <div class="stat-val" data-target="148290">0</div>
+        <div class="stat-lbl">Sites Analyzed</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-card">
+        <div class="stat-val" data-target="892100">0</div>
+        <div class="stat-lbl">Source Files Extracted</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-card">
+        <div class="stat-val-text">0.8s</div>
+        <div class="stat-lbl">Average Scan Time</div>
+      </div>
     </div>
 
     <div class="terminal entrance entrance-5">
       <div class="terminal-bar">
-        <span></span><span></span><span></span>
-        <span class="label">extract — zsh</span>
+        <div class="dots"><span></span><span></span><span></span></div>
+        <span class="label">source-x-sage — engine.v2.4.sh</span>
       </div>
       <div class="terminal-body" id="heroTerminal">
-        <div class="terminal-line"><span class="prompt">$</span><span id="heroTypeLine"></span><span class="terminal-caret"></span></div>
+        <div class="terminal-line"><span class="prompt">sage@core:~$</span><span id="heroTypeLine"></span><span class="terminal-caret"></span></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ SCANNER ============ -->
 <section class="section-pad" id="scanner">
   <div class="wrap">
     <div class="section-head reveal-group">
-      <div class="eyebrow reveal">01 — SCANNER</div>
-      <h2 class="reveal">Drop in a URL</h2>
-      <p class="reveal">We fetch the page, walk the DOM, and split everything into clean HTML, CSS and JS files.</p>
+      <div class="eyebrow reveal">01 — SCANNER ENGINE</div>
+      <h2 class="reveal">Analyze Any Website URL</h2>
+      <p class="reveal">Drop a link below to execute full-spectrum deep extraction.</p>
     </div>
 
     <div class="scanner-card reveal">
       <div class="scanner-row">
         <div class="scanner-input-wrap" id="inputWrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
           <input type="text" id="urlInput" placeholder="https://example.com" autocomplete="off" spellcheck="false">
         </div>
-        <button class="btn btn-primary" id="extractBtn">
-          <span id="extractBtnLabel">Extract code</span>
+        <button class="btn btn-primary btn-neon" id="extractBtn">
+          <span id="extractBtnLabel">Extract & Analyze</span>
         </button>
       </div>
-      <div class="scanner-error" id="scannerError">Enter a valid URL, e.g. https://example.com</div>
+      <div class="scanner-error" id="scannerError">Please enter a valid URL (e.g., https://example.com)</div>
+      
       <div class="scanner-hint">
-        <span>Try:</span>
+        <span>Quick Test:</span>
         <button data-demo="https://example.com">example.com</button>
         <button data-demo="https://css-tricks.com">css-tricks.com</button>
         <button data-demo="https://info.cern.ch">info.cern.ch</button>
       </div>
 
-      <!-- scanning progress -->
       <div class="scan-progress" id="scanProgress">
-        <div class="scan-progress-top"><span id="scanLabel">Connecting…</span><span id="scanPercent">0%</span></div>
-        <div class="scan-progress-bar"><div class="scan-progress-fill" id="scanFill"></div></div>
-        <div class="scan-steps">
-          <div class="scan-step" data-step="0"><span class="dot"></span>Resolving host &amp; fetching document</div>
-          <div class="scan-step" data-step="1"><span class="dot"></span>Parsing DOM structure</div>
-          <div class="scan-step" data-step="2"><span class="dot"></span>Collecting stylesheets</div>
-          <div class="scan-step" data-step="3"><span class="dot"></span>Collecting scripts</div>
-          <div class="scan-step" data-step="4"><span class="dot"></span>Formatting output</div>
+        <div class="scan-progress-top">
+          <span id="scanLabel">INITIATING DEEP SCAN...</span>
+          <span id="scanPercent">0%</span>
         </div>
-        <div class="skeleton-wrap" id="skeletonWrap">
-          <div class="skel" style="width:100%"></div>
-          <div class="skel" style="width:88%"></div>
-          <div class="skel" style="width:94%"></div>
-          <div class="skel" style="width:70%"></div>
+        <div class="scan-progress-bar"><div class="scan-progress-fill" id="scanFill"></div></div>
+        
+        <div class="hacker-terminal" id="hackerConsole">
+          </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section-pad" id="analysis">
+  <div class="wrap">
+    <div class="section-head reveal-group">
+      <div class="eyebrow reveal">02 — SITE INTELLIGENCE</div>
+      <h2 class="reveal">Technology & Insights</h2>
+      <p class="reveal">Instant detection of stack, metadata, and security attributes.</p>
+    </div>
+
+    <div class="dashboard-grid reveal">
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          <h3>Technology Detector</h3>
+        </div>
+        <div class="tech-tags" id="techStackList">
+          <span class="tech-badge">HTML5</span>
+          <span class="tech-badge">CSS3</span>
+          <span class="tech-badge">JavaScript</span>
+          <span class="tech-badge">Highlight.js</span>
+          <span class="tech-badge">Google Fonts</span>
+        </div>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <h3>SEO & Meta Tag Viewer</h3>
+        </div>
+        <div class="meta-list" id="seoMetaList">
+          <div class="meta-item"><span class="meta-key">Title:</span> <span class="meta-val" id="metaTitle">Example Domain</span></div>
+          <div class="meta-item"><span class="meta-key">Description:</span> <span class="meta-val" id="metaDesc">Extracted meta description...</span></div>
+          <div class="meta-item"><span class="meta-key">Viewport:</span> <span class="meta-val" id="metaViewport">width=device-width, initial-scale=1.0</span></div>
+        </div>
+      </div>
+
+      <div class="dash-card">
+        <div class="dash-card-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <h3>Security Headers</h3>
+        </div>
+        <div class="security-list" id="secHeaderList">
+          <div class="sec-item status-ok"><span>HTTPS Protocol</span> <strong>ACTIVE</strong></div>
+          <div class="sec-item status-ok"><span>Content Security Policy</span> <strong>DETECTED</strong></div>
+          <div class="sec-item status-warn"><span>X-Frame-Options</span> <strong>SAMEORIGIN</strong></div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<div class="wrap"><div class="divider"></div></div>
-
-<!-- ============ CODE VIEWER ============ -->
 <section class="section-pad" id="viewer-section">
   <div class="wrap">
     <div class="section-head reveal-group">
-      <div class="eyebrow reveal">02 — SOURCE</div>
-      <h2 class="reveal">Your code, organized</h2>
-      <p class="reveal">Every file, highlighted and ready to copy or download.</p>
+      <div class="eyebrow reveal">03 — SOURCE EXPORT</div>
+      <h2 class="reveal">Extracted Code & Live Preview</h2>
     </div>
 
     <div class="viewer" id="viewer">
       <div class="viewer-meta">
-        <div class="url-chip"><span class="ok-dot"></span><span id="viewerUrl">—</span></div>
-        <button class="btn btn-ghost btn-sm" id="downloadAllBtn">Export as .zip ↓</button>
-      </div>
-
-      <div class="viewer-panel">
-        <div class="viewer-tabs">
-          <div class="tabs-left">
-            <button class="tab-btn active" data-tab="html">index.html</button>
-            <button class="tab-btn" data-tab="css">style.css</button>
-            <button class="tab-btn" data-tab="js">script.js</button>
-          </div>
-          <div class="tabs-right">
-            <button class="btn-icon" id="copyBtn" title="Copy code" aria-label="Copy code">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
-            </button>
-            <button class="btn-icon" id="downloadOneBtn" title="Download this file" aria-label="Download this file">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="code-scroll">
-          <div class="code-pane active" data-pane="html"><pre><code class="language-html" id="codeHtml"></code></pre></div>
-          <div class="code-pane" data-pane="css"><pre><code class="language-css" id="codeCss"></code></pre></div>
-          <div class="code-pane" data-pane="js"><pre><code class="language-javascript" id="codeJs"></code></pre></div>
-        </div>
-
-        <div class="viewer-actions">
-          <span class="stat" id="viewerStat">0 lines extracted</span>
-          <span class="stat">Monochrome syntax theme</span>
+        <div class="url-chip"><span class="ok-dot"></span><span id="viewerUrl">https://example.com</span></div>
+        <div class="viewer-actions-top">
+          <button class="btn btn-ghost btn-sm" id="viewSourceBtn">View Page Source</button>
+          <button class="btn btn-primary btn-sm btn-neon" id="downloadAllBtn">Export .ZIP ↓</button>
         </div>
       </div>
 
-      <!-- live preview -->
-      <div class="preview-panel" id="previewPanel">
-        <div class="preview-bar">
-          <span class="eyebrow" style="margin:0">03 — LIVE PREVIEW</span>
-          <div class="device-toggle" id="deviceToggle">
-            <button class="active" data-device="desktop">Desktop</button>
-            <button data-device="tablet">Tablet</button>
-            <button data-device="mobile">Mobile</button>
+      <div class="viewer-layout">
+        <div class="viewer-panel">
+          <div class="viewer-tabs">
+            <div class="tabs-left">
+              <button class="tab-btn active" data-tab="html">index.html</button>
+              <button class="tab-btn" data-tab="css">style.css</button>
+              <button class="tab-btn" data-tab="js">script.js</button>
+            </div>
+            <div class="tabs-right">
+              <button class="btn-icon" id="copyBtn" title="Copy code" aria-label="Copy code">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+              </button>
+              <button class="btn-icon" id="downloadOneBtn" title="Download File" aria-label="Download File">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 21h16"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="code-scroll">
+            <div class="code-pane active" data-pane="html"><pre><code class="language-html" id="codeHtml"></code></pre></div>
+            <div class="code-pane" data-pane="css"><pre><code class="language-css" id="codeCss"></code></pre></div>
+            <div class="code-pane" data-pane="js"><pre><code class="language-javascript" id="codeJs"></code></pre></div>
           </div>
         </div>
-        <div class="preview-frame-wrap">
-          <iframe id="previewFrame" title="Live preview" sandbox="allow-scripts"></iframe>
+
+        <div class="preview-panel">
+          <div class="preview-header">
+            <span>Website Screenshot Preview</span>
+            <div class="device-toggle">
+              <button class="active" data-device="desktop">Desktop</button>
+              <button data-device="mobile">Mobile</button>
+            </div>
+          </div>
+          <div class="preview-frame-wrap" id="previewFrameWrap">
+            <iframe id="previewFrame" title="Website Preview" sandbox="allow-same-origin allow-scripts"></iframe>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<div class="wrap"><div class="divider"></div></div>
-
-<!-- ============ FEATURES ============ -->
-<section class="section-pad" id="features">
-  <div class="wrap">
-    <div class="section-head reveal-group">
-      <div class="eyebrow reveal">04 — CAPABILITIES</div>
-      <h2 class="reveal">Built for developers</h2>
-      <p class="reveal">Everything you need to inspect, learn from, and reuse a website's front end.</p>
-    </div>
-
-    <div class="features-grid reveal">
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></div>
-        <h3>Full source extraction</h3>
-        <p>HTML, CSS and JavaScript are separated automatically, formatted, and ready to read.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 21V9"/></svg></div>
-        <h3>Syntax highlighting</h3>
-        <p>A monochrome highlighting theme that keeps structure legible without a splash of color.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
-        <h3>Live preview</h3>
-        <p>Render the extracted page in a sandboxed frame, across desktop, tablet and mobile widths.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><path d="M12 15V3"/></svg></div>
-        <h3>One-click ZIP export</h3>
-        <p>Download every file individually, or grab the whole extraction as a single archive.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L14.7 3.86a2 2 0 0 0-3.4 0z"/></svg></div>
-        <h3>Graceful error handling</h3>
-        <p>Blocked, offline or invalid URLs fail clearly — with a fallback demo, never a blank screen.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 9h20"/></svg></div>
-        <h3>Responsive by default</h3>
-        <p>The extractor itself is built the way it teaches — clean, fast, and works on any screen.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ FAQ ============ -->
-<section class="section-pad" id="faq">
-  <div class="wrap">
-    <div class="section-head reveal-group">
-      <div class="eyebrow reveal">05 — FAQ</div>
-      <h2 class="reveal">Questions, answered</h2>
-    </div>
-
-    <div class="faq-list reveal">
-      <div class="faq-item open">
-        <button class="faq-q">Does this work on any website?<span class="plus"></span></button>
-        <div class="faq-a-wrap"><div class="faq-a-inner"><p>Most public pages, yes. Some sites block cross-origin requests entirely, in which case Extract. shows a clear error and offers a demo extraction so you can still see how the tool works.</p></div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">Is the extracted code safe to reuse?<span class="plus"></span></button>
-        <div class="faq-a-wrap"><div class="faq-a-inner"><p>Extract. copies markup and styles for learning and reference. You're responsible for respecting the original site's copyright and license before shipping it elsewhere.</p></div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">Does it run in the browser or on a server?<span class="plus"></span></button>
-        <div class="faq-a-wrap"><div class="faq-a-inner"><p>Entirely in your browser. Nothing you paste is stored — the request goes out, the response comes back, and it stays on your machine.</p></div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">What if a site has hundreds of files?<span class="plus"></span></button>
-        <div class="faq-a-wrap"><div class="faq-a-inner"><p>Extract. focuses on the document you loaded — its inline and linked styles, inline and linked scripts, and the rendered markup — rather than crawling an entire site.</p></div></div>
-      </div>
-      <div class="faq-item">
-        <button class="faq-q">Can I download individual files?<span class="plus"></span></button>
-        <div class="faq-a-wrap"><div class="faq-a-inner"><p>Yes — each tab has its own copy and download button, or you can export everything together as a single .zip archive.</p></div></div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ CTA BAND ============ -->
-<section class="cta-band">
-  <div class="wrap">
-    <h2 class="reveal">Stop guessing how a site is built.</h2>
-    <p class="reveal">Paste a URL and see the code behind it, right now.</p>
-    <div class="cta-band-btns reveal">
-      <a href="#scanner" class="btn btn-primary">Extract a website →</a>
-    </div>
-  </div>
-</section>
-
-<!-- ============ FOOTER ============ -->
-<footer>
-  <div class="wrap">
-    <div class="footer-top">
-      <div class="footer-brand">
-        <a href="#top" class="logo">extract<span class="dot">.</span></a>
-        <p>A monochrome developer tool for pulling clean HTML, CSS and JS out of any page.</p>
-      </div>
-      <div class="footer-cols">
-        <div class="footer-col">
-          <h4>Product</h4>
-          <a href="#scanner">Scanner</a>
-          <a href="#viewer-section">Code viewer</a>
-          <a href="#features">Features</a>
-        </div>
-        <div class="footer-col">
-          <h4>Resources</h4>
-          <a href="#faq">FAQ</a>
-          <a href="#top">Changelog</a>
-          <a href="#top">Status</a>
-        </div>
-        <div class="footer-col">
-          <h4>Company</h4>
-          <a href="#top">About</a>
-          <a href="#top">Contact</a>
-        </div>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span>© <span id="year"></span> Extract. — built with monochrome precision.</span>
-      <div class="footer-socials">
-        <a class="btn-icon" href="#top" aria-label="GitHub"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.25c0 4.53 2.87 8.37 6.84 9.73.5.1.68-.22.68-.5v-1.75c-2.78.62-3.37-1.36-3.37-1.36-.46-1.2-1.11-1.52-1.11-1.52-.91-.64.07-.63.07-.63 1 .07 1.53 1.05 1.53 1.05.9 1.57 2.36 1.12 2.94.86.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.14-4.56-5.07 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.31.1-2.72 0 0 .84-.28 2.75 1.05a9.3 9.3 0 0 1 5 0c1.9-1.33 2.74-1.05 2.74-1.05.56 1.41.21 2.46.1 2.72.64.72 1.03 1.63 1.03 2.75 0 3.94-2.34 4.8-4.57 5.06.36.32.68.94.68 1.9v2.82c0 .28.18.61.69.5A10.03 10.03 0 0 0 22 12.25C22 6.58 17.52 2 12 2z"/></svg></a>
-        <a class="btn-icon" href="#top" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.9 2H22l-7.6 8.7L23.3 22H16.6l-5.2-6.8L5.4 22H2.3l8.1-9.3L1.4 2h6.9l4.7 6.2L18.9 2zm-1.2 18h1.7L7.4 3.9H5.6L17.7 20z"/></svg></a>
-      </div>
-    </div>
-  </div>
-</footer>
-
-<div class="toast" id="toast"></div>
+<div id="toast" class="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="script.js"></script>
-<script src="edge-aura.js"></script>
 </body>
-</html>
+                                                                                                      </html>
