@@ -14,6 +14,9 @@
 </head>
 <body class="pre-load">
 
+<!-- ambient background light — very subtle, non-interactive -->
+<div class="ambient-glow" aria-hidden="true"></div>
+
 <!-- splash screen -->
 <div class="page-loader" id="pageLoader">
   <div class="loader-inner">
@@ -23,8 +26,11 @@
   </div>
 </div>
 
-<!-- cursor glow -->
-<div class="mouse-glow" id="mouseGlow"></div>
+<!-- interactive cursor / touch glow -->
+<div class="cursor-glow" id="cursorGlow" aria-hidden="true">
+  <div class="cursor-glow-outer"></div>
+  <div class="cursor-glow-core"></div>
+</div>
 
 <!-- ============ NAV ============ -->
 <nav class="nav" id="nav">

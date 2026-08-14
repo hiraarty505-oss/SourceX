@@ -77,31 +77,112 @@
   });
 
   /* ============================================================
-     MOUSE GLOW — follows cursor, rAF-throttled for 60fps
+     INTERACTIVE WHITE GLOW — cursor (desktop) + touch (mobile)
+     rAF + lerp-based inertia; only touches transform/opacity so
+     layout, scroll and existing behaviour stay untouched.
      ============================================================ */
   (() => {
-    const glow = $("#mouseGlow");
-    if (!glow || prefersReducedMotion) return;
-    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-
-    let targetX = 0, targetY = 0, queued = false;
-
-    function paint() {
-      glow.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
-      queued = false;
+    const glow = $("#cursorGlow");
+    const heroGlowEl = $(".hero-glow");
+    const heroSection = $("#top");
+    if (!glow || prefersReducedMotion) {
+      if (heroGlowEl) heroGlowEl.classList.add("in");
+      return;
     }
 
-    window.addEventListener("mousemove", (e) => {
-      targetX = e.clientX;
-      targetY = e.clientY;
+    let curX = window.innerWidth / 2;
+    let curY = window.innerHeight / 2;
+    let targetX = curX;
+    let targetY = curY;
+    let isTouch = false;
+    let rafId = null;
+    let heroCheckDue = true;
+
+    function updateHeroGlow(y) {
+      if (!heroGlowEl || !heroSection) return;
+      const rect = heroSection.getBoundingClientRect();
+      if (rect.bottom < -80 || rect.top > window.innerHeight + 80) return;
+      const centerY = rect.top + rect.height / 2;
+      const dist = Math.abs(y - centerY);
+      const proximity = Math.max(0, 1 - dist / (rect.height * 0.85 + 1));
+      heroGlowEl.style.opacity = (0.42 + proximity * 0.5).toFixed(2);
+    }
+
+    function paint() {
+      const lerp = isTouch ? 0.4 : 0.12;
+      curX += (targetX - curX) * lerp;
+      curY += (targetY - curY) * lerp;
+      glow.style.transform = `translate3d(${curX}px, ${curY}px, 0)`;
+      const settled = Math.abs(targetX - curX) < 0.4 && Math.abs(targetY - curY) < 0.4;
+      if (!settled) {
+        rafId = requestAnimationFrame(paint);
+      } else {
+        rafId = null;
+      }
+    }
+    function requestPaint() {
+      if (!rafId) rafId = requestAnimationFrame(paint);
+    }
+
+    function showGlowAt(x, y, touch) {
+      isTouch = touch;
+      targetX = x; targetY = y;
+      if (!glow.classList.contains("active")) {
+        curX = x; curY = y; // snap on first appearance — no fly-in from center
+        glow.style.transform = `translate3d(${curX}px, ${curY}px, 0)`;
+      }
       glow.classList.add("active");
-      if (!queued) {
-        queued = true;
-        requestAnimationFrame(paint);
+      requestPaint();
+      updateHeroGlow(y);
+    }
+    function hideGlow() {
+      glow.classList.remove("active");
+    }
+    function spawnRipple(x, y) {
+      const r = document.createElement("div");
+      r.className = "touch-ripple";
+      r.style.left = x + "px";
+      r.style.top = y + "px";
+      document.body.appendChild(r);
+      r.addEventListener("animationend", () => r.remove(), { once: true });
+    }
+
+    // desktop / mouse — smooth, inert follow
+    window.addEventListener("pointermove", (e) => {
+      if (e.pointerType === "mouse") showGlowAt(e.clientX, e.clientY, false);
+    }, { passive: true });
+    window.addEventListener("mouseleave", hideGlow);
+    document.addEventListener("mouseleave", hideGlow);
+
+    // mobile / touch — glow at touch point + soft ripple, supports multi-touch
+    window.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch") return;
+      showGlowAt(e.clientX, e.clientY, true);
+      spawnRipple(e.clientX, e.clientY);
+    }, { passive: true });
+    window.addEventListener("pointermove", (e) => {
+      if (e.pointerType === "touch" && glow.classList.contains("active")) {
+        showGlowAt(e.clientX, e.clientY, true);
       }
     }, { passive: true });
+    window.addEventListener("pointerup", (e) => {
+      if (e.pointerType !== "touch") return;
+      spawnRipple(e.clientX, e.clientY);
+      hideGlow();
+    }, { passive: true });
+    window.addEventListener("pointercancel", hideGlow, { passive: true });
 
-    document.addEventListener("mouseleave", () => glow.classList.remove("active"));
+    // keep hero glow correct on scroll even without pointer movement
+    window.addEventListener("scroll", () => {
+      if (!heroCheckDue) return;
+      heroCheckDue = false;
+      requestAnimationFrame(() => {
+        updateHeroGlow(window.innerHeight * 0.4);
+        heroCheckDue = true;
+      });
+    }, { passive: true });
+
+    if (heroGlowEl) requestAnimationFrame(() => heroGlowEl.classList.add("in"));
   })();
 
   /* ============================================================

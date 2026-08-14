@@ -102,6 +102,7 @@ section { position: relative; }
   transition: transform var(--dur-2) var(--ease-out), background var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out);
   white-space: nowrap;
 }
+.btn:active { box-shadow: 0 0 20px rgba(255,255,255,0.16); transition-duration: 150ms; }
 .btn-primary {
   background: var(--white);
   color: var(--black);
@@ -194,9 +195,9 @@ section { position: relative; }
   pointer-events: none;
   z-index: 0;
   opacity: 0;
-  animation: glow-in 1400ms var(--ease-out) 200ms forwards;
+  transition: opacity 900ms var(--ease-out);
 }
-@keyframes glow-in { from { opacity: 0; } to { opacity: 1; } }
+.hero-glow.in { opacity: 0.55; }
 .hero-bg {
   position: absolute; inset: 0;
   z-index: 0;
@@ -693,27 +694,76 @@ body.pre-load .entrance { opacity: 0; }
 }
 @keyframes loader-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
-/* ---------- cursor glow ---------- */
-.mouse-glow {
+/* ---------- ambient background light (very subtle, non-interactive) ---------- */
+.ambient-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 22% 15%, rgba(255,255,255,0.045), transparent 40%),
+    radial-gradient(circle at 80% 62%, rgba(255,255,255,0.03), transparent 45%);
+  filter: blur(90px);
+  animation: ambient-drift 46s var(--ease-in-out) infinite alternate;
+  will-change: transform;
+}
+@keyframes ambient-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(16px, -12px, 0) scale(1.03); }
+}
+
+/* ---------- interactive cursor / touch glow ---------- */
+.cursor-glow {
   position: fixed;
   top: 0; left: 0;
-  width: 480px; height: 480px;
-  margin-left: -240px; margin-top: -240px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(255,255,255,0.07), rgba(255,255,255,0.02) 45%, transparent 72%);
-  filter: blur(30px);
+  width: 0; height: 0;
   pointer-events: none;
   z-index: 5;
   opacity: 0;
-  transform: translate3d(-9999px, -9999px, 0);
+  transition: opacity 650ms var(--ease-out);
   will-change: transform;
-  transition: opacity 500ms var(--ease-out);
 }
-.mouse-glow.active { opacity: 1; }
-@media (hover: none), (pointer: coarse) {
-  .mouse-glow { display: none; }
+.cursor-glow.active { opacity: 1; }
+.cursor-glow-outer,
+.cursor-glow-core {
+  position: absolute;
+  top: 0; left: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.cursor-glow-outer {
+  width: 820px; height: 820px;
+  background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.018) 42%, transparent 72%);
+  filter: blur(64px);
+}
+.cursor-glow-core {
+  width: 260px; height: 260px;
+  background: radial-gradient(circle, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.045) 45%, transparent 76%);
+  filter: blur(18px);
+}
+@media (hover: none) and (pointer: coarse) {
+  .cursor-glow-outer { width: 620px; height: 620px; }
+  .cursor-glow-core { width: 200px; height: 200px; }
 }
 
+/* touch ripple — short-lived, spawned on tap */
+.touch-ripple {
+  position: fixed;
+  top: 0; left: 0;
+  width: 18px; height: 18px;
+  margin-left: -9px; margin-top: -9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.16) 38%, transparent 74%);
+  pointer-events: none;
+  z-index: 6;
+  filter: blur(2px);
+  animation: touch-ripple-anim 850ms var(--ease-out) forwards;
+}
+@keyframes touch-ripple-anim {
+  0%   { transform: scale(0.3); opacity: 0.5; }
+  55%  { opacity: 0.24; }
+  100% { transform: scale(8); opacity: 0; }
+}
 /* ============================================================
    RESPONSIVE
    ============================================================ */
@@ -756,6 +806,8 @@ body.pre-load .entrance { opacity: 0; }
   }
   .reveal { transform: none; }
   .hero-scanline::before { display: none; }
-  .mouse-glow { display: none; }
-  .loader-logo, .loader-line, .loader-percent, .hero-glow { animation: none !important; opacity: 1 !important; filter: none !important; }
+  .ambient-glow { animation: none; }
+  .cursor-glow, .touch-ripple { display: none; }
+  .loader-logo, .loader-line, .loader-percent { animation: none !important; opacity: 1 !important; filter: none !important; }
+  .hero-glow { animation: none !important; opacity: 0.55 !important; filter: blur(70px) !important; }
 }
