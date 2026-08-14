@@ -14,13 +14,17 @@
 </head>
 <body class="pre-load">
 
-<!-- page loader -->
+<!-- splash screen -->
 <div class="page-loader" id="pageLoader">
-  <div class="loader-mark">
-    <span>booting extract.</span>
-    <div class="loader-bar"><span id="loaderFill"></span></div>
+  <div class="loader-inner">
+    <div class="loader-logo">extract<span class="dot">.</span></div>
+    <div class="loader-line"><span id="loaderFill"></span></div>
+    <div class="loader-percent" id="loaderPercent">0%</div>
   </div>
 </div>
+
+<!-- cursor glow -->
+<div class="mouse-glow" id="mouseGlow"></div>
 
 <!-- ============ NAV ============ -->
 <nav class="nav" id="nav">
@@ -42,6 +46,7 @@
 
 <!-- ============ HERO ============ -->
 <section class="hero" id="top">
+  <div class="hero-glow"></div>
   <div class="hero-bg"></div>
   <div class="hero-scanline"></div>
   <div class="wrap hero-inner">
@@ -88,7 +93,7 @@
       <div class="scanner-hint">
         <span>Try:</span>
         <button data-demo="https://example.com">example.com</button>
-        <button data-demo="https://motherfuckingwebsite.com">motherfuckingwebsite.com</button>
+        <button data-demo="https://css-tricks.com">css-tricks.com</button>
         <button data-demo="https://info.cern.ch">info.cern.ch</button>
       </div>
 

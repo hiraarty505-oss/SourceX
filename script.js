@@ -26,8 +26,7 @@
     toast.textContent = msg;
     toast.classList.add("show");
     clearTimeout(showToast._t);
-    const duration = Math.min(5200, 2200 + msg.length * 24);
-    showToast._t = setTimeout(() => toast.classList.remove("show"), duration);
+    showToast._t = setTimeout(() => toast.classList.remove("show"), 2400);
   }
 
   function download(filename, content, mime) {
@@ -47,12 +46,63 @@
      ============================================================ */
   window.addEventListener("load", () => {
     const fill = $("#loaderFill");
-    requestAnimationFrame(() => (fill.style.width = "100%"));
+    const percentEl = $("#loaderPercent");
+    const SPLASH_MS = 2400; // total splash duration ~2.4s (within the 2–3s target)
+
+    if (prefersReducedMotion) {
+      if (fill) fill.style.width = "100%";
+      if (percentEl) percentEl.textContent = "100%";
+      $("#pageLoader").classList.add("hide");
+      document.body.classList.remove("pre-load");
+      return;
+    }
+
+    requestAnimationFrame(() => { if (fill) fill.style.width = "100%"; });
+
+    // count 0% → 100% in sync with the line fill
+    let start = null;
+    const COUNT_MS = 1500;
+    function tickPercent(ts) {
+      if (start === null) start = ts;
+      const progress = Math.min((ts - start) / COUNT_MS, 1);
+      if (percentEl) percentEl.textContent = Math.round(progress * 100) + "%";
+      if (progress < 1) requestAnimationFrame(tickPercent);
+    }
+    setTimeout(() => requestAnimationFrame(tickPercent), 560);
+
     setTimeout(() => {
       $("#pageLoader").classList.add("hide");
       document.body.classList.remove("pre-load");
-    }, prefersReducedMotion ? 50 : 650);
+    }, SPLASH_MS);
   });
+
+  /* ============================================================
+     MOUSE GLOW — follows cursor, rAF-throttled for 60fps
+     ============================================================ */
+  (() => {
+    const glow = $("#mouseGlow");
+    if (!glow || prefersReducedMotion) return;
+    if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+
+    let targetX = 0, targetY = 0, queued = false;
+
+    function paint() {
+      glow.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
+      queued = false;
+    }
+
+    window.addEventListener("mousemove", (e) => {
+      targetX = e.clientX;
+      targetY = e.clientY;
+      glow.classList.add("active");
+      if (!queued) {
+        queued = true;
+        requestAnimationFrame(paint);
+      }
+    }, { passive: true });
+
+    document.addEventListener("mouseleave", () => glow.classList.remove("active"));
+  })();
 
   /* ============================================================
      NAV — scroll state + mobile burger
@@ -197,21 +247,10 @@ button:hover { transform: translateY(-2px); }`,
   /* ============================================================
      EXTRACTION ENGINE
      ============================================================ */
-
-  // Optional: your own CORS relay (see cors-worker.js + README "Your own backend").
-  // Fill this in after deploying and it's tried FIRST, before any public proxy —
-  // e.g. "https://extract-cors.yourname.workers.dev/?url="
-  const OWN_WORKER_URL = "";
-
   const PROXIES = [
-    ...(OWN_WORKER_URL ? [{ name: "own worker", build: (u) => `${OWN_WORKER_URL}${encodeURIComponent(u)}` }] : []),
-    { name: "allorigins", build: (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}` },
-    { name: "codetabs", build: (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}` },
-    { name: "corsproxy.io", build: (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}` },
-    { name: "cors.eu.org", build: (u) => `https://cors.eu.org/${u}` },
-    { name: "thingproxy", build: (u) => `https://thingproxy.freeboard.io/fetch/${u}` },
-    { name: "yacdn", build: (u) => `https://yacdn.org/proxy/${u}` },
-    { name: "corsfix", build: (u) => `https://proxy.corsfix.com/?${u}` },
+    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+    (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+    (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
   ];
 
   async function fetchWithTimeout(url, ms) {
@@ -220,37 +259,31 @@ button:hover { transform: translateY(-2px); }`,
     try {
       const res = await fetch(url, { signal: ctrl.signal });
       clearTimeout(t);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error("bad status " + res.status);
       return await res.text();
     } catch (e) {
       clearTimeout(t);
-      if (e.name === "AbortError") throw new Error("timed out");
       throw e;
     }
   }
 
-  // Tries every proxy in order, collecting a reason for each failure so the UI
-  // can explain *why* it fell back to the demo instead of just saying "failed".
   async function fetchPage(targetUrl) {
-    const attempts = [];
-    for (const proxy of PROXIES) {
+    let lastErr;
+    for (const build of PROXIES) {
       try {
-        const text = await fetchWithTimeout(proxy.build(targetUrl), 12000);
-        if (text && text.length > 40) return { text, via: proxy.name, attempts };
-        attempts.push({ proxy: proxy.name, reason: "empty response" });
+        const text = await fetchWithTimeout(build(targetUrl), 8000);
+        if (text && text.length > 40) return text;
       } catch (e) {
-        attempts.push({ proxy: proxy.name, reason: e.message || "network error" });
+        lastErr = e;
       }
     }
-    const err = new Error("All proxies failed");
-    err.attempts = attempts;
-    throw err;
+    throw lastErr || new Error("All proxies failed");
   }
 
   async function fetchAsset(url) {
-    for (const proxy of PROXIES) {
+    for (const build of PROXIES) {
       try {
-        const text = await fetchWithTimeout(proxy.build(url), 9000);
+        const text = await fetchWithTimeout(build(url), 6000);
         if (text) return text;
       } catch (e) { /* try next proxy */ }
     }
@@ -390,22 +423,14 @@ button:hover { transform: translateY(-2px); }`,
     })();
 
     try {
-      const { text: rawHtml, via } = await fetchPage(url);
+      const rawHtml = await fetchPage(url);
       await stepTimer;
       result = await extractFromHtml(rawHtml, url);
-      if (via !== "own worker") console.info(`[extract] fetched via public proxy: ${via}`);
     } catch (err) {
       await stepTimer;
       usedDemo = true;
       result = { html: prettyHtml(DEMO.html), css: DEMO.css, js: DEMO.js, rawHtmlForPreview: DEMO.html };
-
-      const attempts = err.attempts || [];
-      if (attempts.length) {
-        console.warn("[extract] every proxy failed:", attempts);
-        showToast(`${attempts.length} proxies failed (${attempts[attempts.length - 1].reason}) — showing a demo instead`);
-      } else {
-        showToast("Couldn't reach that URL — showing a demo extraction instead");
-      }
+      showToast("Couldn't reach that URL — showing a demo extraction instead");
     }
 
     setStep(5, 100);
