@@ -25,9 +25,10 @@ Live demo: buka `index.html` langsung di browser — tidak perlu build step, ser
 
 ```
 extract-tool/
-├── index.html    # Struktur halaman & semua section (Hero, Scanner, Viewer, Preview, Features, FAQ, Footer)
-├── style.css     # Design system (token warna/tipografi/easing) + semua animasi
-├── script.js     # Logika: ekstraksi, tab, copy/download, zip export, scroll reveal
+├── index.html      # Struktur halaman & semua section (Hero, Scanner, Viewer, Preview, Features, FAQ, Footer)
+├── style.css       # Design system (token warna/tipografi/easing) + semua animasi
+├── script.js       # Logika: ekstraksi, tab, copy/download, zip export, scroll reveal
+├── cors-worker.js  # (opsional) Cloudflare Worker — backend proxy CORS milik sendiri
 └── README.md
 ```
 
@@ -60,11 +61,18 @@ npx serve .
 
 ## ⚙️ Cara Kerja Ekstraksi
 
-Karena ini murni **client-side** (tanpa backend sendiri), proses ekstraksi URL lintas-origin dilakukan lewat proxy CORS publik, dicoba berurutan sampai salah satu berhasil:
+Secara default, ekstraksi URL lintas-origin dicoba lewat **8 proxy berurutan** sampai salah satu berhasil (semakin banyak jalur cadangan, semakin kecil kemungkinan gagal total):
 
-1. `api.allorigins.win`
-2. `api.codetabs.com`
-3. `corsproxy.io`
+1. *(kosong secara default)* worker milik sendiri — lihat [Backend sendiri (opsional, paling andal)](#-backend-sendiri-opsional-paling-andal)
+2. `api.allorigins.win`
+3. `api.codetabs.com`
+4. `corsproxy.io`
+5. `cors.eu.org`
+6. `thingproxy.freeboard.io`
+7. `yacdn.org`
+8. `proxy.corsfix.com`
+
+Timeout per proxy dinaikkan jadi **12 detik** (sebelumnya 8 detik) untuk koneksi lambat seperti 4G, dan setiap kegagalan proxy dicatat dengan alasannya (timeout / status HTTP / error jaringan) — kalau semua gagal, toast di UI akan menyebutkan berapa proxy yang gagal dan alasan yang terakhir, plus detail lengkap tiap percobaan bisa dilihat di browser console (`[extract] every proxy failed: …`).
 
 Alurnya:
 
@@ -80,7 +88,34 @@ Alurnya:
 - **Bukan full-site crawler** — hanya mengekstrak dokumen yang diminta, bukan seluruh halaman di situs tersebut.
 - **Preview iframe** memuat HTML mentah lewat `srcdoc`; aset dengan path relatif pada situs asli bisa saja tidak tampil sempurna karena tidak ada base URL asli.
 - Jika ekstraksi nyata gagal total, aplikasi otomatis menampilkan **contoh demo bawaan** (`DEMO` object di `script.js`) supaya UI tetap berfungsi dan bisa dicoba.
-- Untuk hasil ekstraksi yang konsisten di semua situs (termasuk yang butuh render JS penuh), solusi jangka panjang adalah menambahkan **backend sendiri** (mis. headless browser seperti Playwright) — bukan bergantung pada proxy publik.
+
+---
+
+## 🔒 Backend sendiri (opsional, paling andal)
+
+Proxy publik di atas gratis tapi **tidak dijamin selalu online** — bisa kena rate-limit, diblokir ISP tertentu, atau memang sedang down. Solusi paling stabil: deploy relay CORS milik sendiri lewat **Cloudflare Workers** (gratis, 100.000 request/hari, tanpa kartu kredit).
+
+File `cors-worker.js` sudah disiapkan siap-pakai. Cara deploy (± 2 menit):
+
+1. Buka [dash.cloudflare.com](https://dash.cloudflare.com/) → daftar/login gratis.
+2. **Workers & Pages → Create → Create Worker** → beri nama, misal `extract-cors` → Deploy.
+3. Klik **Edit code**, hapus semua isi editor, tempel seluruh isi `cors-worker.js`, lalu **Deploy** lagi.
+4. Salin URL worker-nya, formatnya seperti: `https://extract-cors.<subdomain-kamu>.workers.dev`
+5. Buka `script.js`, cari baris ini di bagian `EXTRACTION ENGINE`:
+
+   ```js
+   const OWN_WORKER_URL = "";
+   ```
+
+   Isi jadi:
+
+   ```js
+   const OWN_WORKER_URL = "https://extract-cors.<subdomain-kamu>.workers.dev/?url=";
+   ```
+
+6. Simpan & refresh. Worker milik sendiri otomatis dicoba **paling pertama**, sebelum proxy publik mana pun.
+
+> Detail lengkap (termasuk opsi allowlist domain untuk hardening) ada sebagai komentar di dalam `cors-worker.js`.
 
 ---
 
@@ -98,7 +133,8 @@ Didefinisikan sebagai CSS custom properties di `style.css` (`:root`):
 ## 🧩 Kustomisasi Cepat
 
 - **Ganti nama produk**: cari & ganti string `extract` / `Extract.` di `index.html`.
-- **Tambah/ganti proxy CORS**: edit array `PROXIES` di `script.js`.
+- **Tambah/ganti proxy CORS**: edit array `PROXIES` di `script.js` — tiap entri berbentuk `{ name, build(url) }`.
+- **Pakai backend sendiri**: isi `OWN_WORKER_URL` di `script.js` — lihat [Backend sendiri](#-backend-sendiri-opsional-paling-andal).
 - **Ubah batas ekstraksi stylesheet/script eksternal**: ubah angka `.slice(0, 4)` (CSS) dan `.slice(0, 3)` (JS) di fungsi `extractFromHtml`.
 - **Matikan efek mengetik**: set `prefersReducedMotion` secara paksa jadi `true` di awal `script.js`.
 
