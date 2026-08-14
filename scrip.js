@@ -568,3 +568,56 @@ button:hover { transform: translateY(-2px); }`,
       if (window.hljs) hljs.highlightElement(codeEls.html);
     } else {
       await typeCode
+       /* tabs */
+  $$(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      activeTab = btn.dataset.tab;
+      $$(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
+      $$(".code-pane").forEach((p) => p.classList.toggle("active", p.dataset.pane === activeTab));
+    });
+  });
+
+  /* copy / download */
+  const filenames = { html: "index.html", css: "style.css", js: "script.js" };
+  const mimes = { html: "text/html", css: "text/css", js: "text/javascript" };
+
+  $("#copyBtn").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(current[activeTab] || "");
+      showToast(`Copied ${filenames[activeTab]} to clipboard`);
+    } catch {
+      showToast("Copy failed — select and copy manually");
+    }
+  });
+
+  $("#downloadOneBtn").addEventListener("click", () => {
+    download(filenames[activeTab], current[activeTab] || "", mimes[activeTab]);
+    showToast(`Downloading ${filenames[activeTab]}`);
+  });
+
+  $("#downloadAllBtn").addEventListener("click", async () => {
+    if (!window.JSZip) { showToast("ZIP library failed to load"); return; }
+    const zip = new JSZip();
+    zip.file("index.html", current.html || "");
+    zip.file("style.css", current.css || "");
+    zip.file("script.js", current.js || "");
+    const blob = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "extracted-source.zip";
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    showToast("Downloading extracted-source.zip");
+  });
+
+  /* device toggle */
+  $$(".device-toggle button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      $$(".device-toggle button").forEach((b) => b.classList.toggle("active", b === btn));
+      previewFrame.classList.remove("tablet", "mobile");
+      if (btn.dataset.device !== "desktop") previewFrame.classList.add(btn.dataset.device);
+    });
+  });
+
+  /* footer year */
+  $("#year").textContent = new Date().getFullYear();
