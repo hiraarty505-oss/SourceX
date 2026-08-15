@@ -1,0 +1,22 @@
+{
+  "name": "source-x-sage",
+  "version": "1.0.0",
+  "description": "Extract, Analyze & Export Website Source Code",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 8000",
+    "lint": "echo 'No linter configured for vanilla JS project'",
+    "test": "echo 'No tests configured'"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.1.1"
+  },
+  "devDependencies": {},
+  "keywords": [
+    "source-code",
+    "extractor",
+    "web-development"
+  ],
+  "author": "",
+  "license": "MIT"
+}
