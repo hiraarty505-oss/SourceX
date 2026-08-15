@@ -946,7 +946,7 @@ body.pre-load .entrance { opacity: 0; }
   top: 0; left: 0;
   width: 0; height: 0;
   pointer-events: none;
-  z-index: 5;
+  z-index: 150;
   opacity: 0;
   transition: opacity 650ms var(--ease-out);
   will-change: transform;
@@ -983,7 +983,7 @@ body.pre-load .entrance { opacity: 0; }
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.16) 38%, transparent 74%);
   pointer-events: none;
-  z-index: 6;
+  z-index: 151;
   filter: blur(2px);
   animation: touch-ripple-anim 850ms var(--ease-out) forwards;
 }
