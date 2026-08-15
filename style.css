@@ -466,6 +466,20 @@ section { position: relative; }
   border-radius: 3px;
   transition: width var(--dur-3) var(--ease-out-soft);
 }
+.scan-progress.done .scan-progress-top { color: var(--white); }
+.scan-progress.done .scan-progress-fill { box-shadow: 0 0 12px rgba(255,255,255,0.5); }
+.scan-label-check {
+  display: inline-flex; vertical-align: -2px; margin-right: 6px;
+  animation: check-in 260ms var(--ease-out);
+}
+.scan-label-check svg { width: 13px; height: 13px; }
+@keyframes check-in {
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scan-label-check { animation: none; }
+}
 .scan-steps { margin-top: 18px; display: flex; flex-direction: column; gap: 9px; }
 .scan-step {
   font-family: var(--font-mono); font-size: 12.5px; color: var(--g600);

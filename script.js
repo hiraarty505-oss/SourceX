@@ -738,9 +738,11 @@ button:hover { transform: translateY(-2px); }`,
     }
 
     setStep(5, 100);
-    await new Promise((r) => setTimeout(r, 260));
+    scanProgress.classList.add("done");
+    scanLabel.innerHTML = `<span class="scan-label-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg></span>Done`;
+    await new Promise((r) => setTimeout(r, prefersReducedMotion ? 80 : 420));
 
-    scanProgress.classList.remove("active");
+    scanProgress.classList.remove("active", "done");
     skeletonWrap.classList.remove("active");
     extractBtn.disabled = false;
     extractBtnLabel.textContent = "Extract code";
