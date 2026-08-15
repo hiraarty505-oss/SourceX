@@ -428,7 +428,9 @@ button:hover { transform: translateY(-2px); }`,
   /* ============================================================
      EXTRACTION ENGINE
      ============================================================ */
+  const OWN_WORKER_URL = ""; // e.g. "https://extract-cors.you.workers.dev/?url=" — see cors-worker.js
   const PROXIES = [
+    ...(OWN_WORKER_URL ? [(u) => OWN_WORKER_URL + encodeURIComponent(u)] : []),
     (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
     (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
     (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
