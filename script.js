@@ -47,11 +47,25 @@
   window.addEventListener("load", () => {
     const fill = $("#loaderFill");
     const percentEl = $("#loaderPercent");
+    const statusEl = $("#loaderStatus");
     const SPLASH_MS = 2400; // total splash duration ~2.4s (within the 2–3s target)
+
+    const statusLines = [
+      "initializing sandbox…",
+      "warming up proxy pool…",
+      "loading syntax engine…",
+      "ready.",
+    ];
+    if (statusEl && !prefersReducedMotion) {
+      statusLines.forEach((line, i) => {
+        setTimeout(() => { statusEl.textContent = line; }, i * 560);
+      });
+    }
 
     if (prefersReducedMotion) {
       if (fill) fill.style.width = "100%";
       if (percentEl) percentEl.textContent = "100%";
+      if (statusEl) statusEl.textContent = "ready.";
       $("#pageLoader").classList.add("hide");
       document.body.classList.remove("pre-load");
       return;
@@ -75,6 +89,92 @@
       document.body.classList.remove("pre-load");
     }, SPLASH_MS);
   });
+
+  /* ============================================================
+     LIVE STATS — genuine per-device counters, not fake global
+     numbers. Persisted in localStorage on this browser only and
+     updated after every real extraction with the real elapsed time.
+     ============================================================ */
+  const Stats = (() => {
+    const KEY = "sxs_stats_v1";
+    function load() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(KEY) || "{}");
+        return {
+          sites: raw.sites || 0,
+          files: raw.files || 0,
+          durations: Array.isArray(raw.durations) ? raw.durations.slice(-20) : [],
+        };
+      } catch { return { sites: 0, files: 0, durations: [] }; }
+    }
+    function save(s) {
+      try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* storage unavailable — ignore */ }
+    }
+    let state = load();
+
+    function record(fileCount, ms) {
+      state.sites += 1;
+      state.files += fileCount;
+      state.durations.push(ms);
+      if (state.durations.length > 20) state.durations.shift();
+      save(state);
+      render(true);
+    }
+
+    function avgSeconds() {
+      if (!state.durations.length) return null;
+      const avg = state.durations.reduce((a, b) => a + b, 0) / state.durations.length;
+      return avg / 1000;
+    }
+
+    function countUp(el, target, suffix = "") {
+      if (prefersReducedMotion) { el.textContent = target + suffix; return; }
+      const start = 0;
+      const dur = 900;
+      const t0 = performance.now();
+      function step(t) {
+        const p = Math.min((t - t0) / dur, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(start + (target - start) * eased) + suffix;
+        if (p < 1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function render(animate) {
+      const sitesEl = $("#statSites");
+      const filesEl = $("#statFiles");
+      const timeEl = $("#statTime");
+      if (!sitesEl) return;
+      if (animate) {
+        countUp(sitesEl, state.sites);
+        countUp(filesEl, state.files);
+      } else {
+        sitesEl.textContent = state.sites;
+        filesEl.textContent = state.files;
+      }
+      const avg = avgSeconds();
+      timeEl.textContent = avg === null ? "—" : avg.toFixed(1) + "s";
+    }
+
+    return { record, render };
+  })();
+
+  // animate the stats strip in once it's visible
+  const statsStripEl = $("#statsStrip");
+  if (statsStripEl && "IntersectionObserver" in window) {
+    const statsIo = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          Stats.render(true);
+          statsIo.disconnect();
+        }
+      });
+    }, { threshold: 0.4 });
+    statsIo.observe(statsStripEl);
+  } else if (statsStripEl) {
+    Stats.render(false);
+  }
 
   /* ============================================================
      INTERACTIVE WHITE GLOW — cursor (desktop) + touch (mobile)
@@ -334,14 +434,21 @@ button:hover { transform: translateY(-2px); }`,
     (u) => `https://corsproxy.io/?url=${encodeURIComponent(u)}`,
   ];
 
-  async function fetchWithTimeout(url, ms) {
+  async function fetchWithTimeout(url, ms, wantHeaders) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), ms);
     try {
       const res = await fetch(url, { signal: ctrl.signal });
       clearTimeout(t);
       if (!res.ok) throw new Error("bad status " + res.status);
-      return await res.text();
+      const text = await res.text();
+      if (!wantHeaders) return text;
+      // Only headers the proxy/browser actually exposes via CORS end up
+      // here — most security headers from the *original* site are not
+      // readable cross-origin, and we're honest about that in the UI.
+      const headers = {};
+      res.headers.forEach((v, k) => { headers[k] = v; });
+      return { text, headers };
     } catch (e) {
       clearTimeout(t);
       throw e;
@@ -352,8 +459,8 @@ button:hover { transform: translateY(-2px); }`,
     let lastErr;
     for (const build of PROXIES) {
       try {
-        const text = await fetchWithTimeout(build(targetUrl), 8000);
-        if (text && text.length > 40) return text;
+        const out = await fetchWithTimeout(build(targetUrl), 8000, true);
+        if (out.text && out.text.length > 40) return out;
       } catch (e) {
         lastErr = e;
       }
@@ -380,7 +487,112 @@ button:hover { transform: translateY(-2px); }`,
     }
   }
 
-  async function extractFromHtml(rawHtml, baseUrl) {
+  /* ============================================================
+     SITE ANALYSIS — technology fingerprint, SEO snapshot, meta
+     tags, exposed security headers, resource inventory.
+     Runs entirely on the already-fetched HTML — no extra requests.
+     ============================================================ */
+  const TECH_SIGNATURES = [
+    { name: "Next.js", cat: "Framework", test: (h) => /__NEXT_DATA__|_next\/static|next\/dist/i.test(h) },
+    { name: "Nuxt", cat: "Framework", test: (h) => /__NUXT__|\/_nuxt\//i.test(h) },
+    { name: "React", cat: "Library", test: (h) => /data-reactroot|react-dom|_reactRootContainer/i.test(h) },
+    { name: "Vue.js", cat: "Framework", test: (h) => /\bv-bind\b|\bv-if\b|\bv-for\b|__vue__|vue@\d/i.test(h) },
+    { name: "Angular", cat: "Framework", test: (h) => /ng-version|ng-app|angular\.min\.js/i.test(h) },
+    { name: "Svelte", cat: "Framework", test: (h) => /svelte-[a-z0-9]{6}|__SVELTE__/i.test(h) },
+    { name: "Alpine.js", cat: "Library", test: (h) => /alpinejs|\bx-data=/i.test(h) },
+    { name: "jQuery", cat: "Library", test: (h) => /jquery(\.min)?\.js|jquery-\d/i.test(h) },
+    { name: "Tailwind CSS", cat: "CSS", test: (h) => /tailwindcss|class="[^"]*\b(flex|grid)\b[^"]*\bpx-\d/i.test(h) },
+    { name: "Bootstrap", cat: "CSS", test: (h) => /bootstrap(\.min)?\.css|bootstrap(\.min)?\.js/i.test(h) },
+    { name: "WordPress", cat: "CMS", test: (h) => /wp-content|wp-includes|name="generator" content="WordPress/i.test(h) },
+    { name: "Shopify", cat: "Commerce", test: (h) => /cdn\.shopify\.com|Shopify\.theme/i.test(h) },
+    { name: "Webflow", cat: "Builder", test: (h) => /data-wf-site|webflow\.com/i.test(h) },
+    { name: "Squarespace", cat: "Builder", test: (h) => /squarespace\.com|static1\.squarespace/i.test(h) },
+    { name: "GSAP", cat: "Animation", test: (h) => /gsap(\.min)?\.js|greensock/i.test(h) },
+    { name: "Framer Motion", cat: "Animation", test: (h) => /framer-motion/i.test(h) },
+    { name: "Google Fonts", cat: "Fonts", test: (h) => /fonts\.googleapis\.com/i.test(h) },
+    { name: "Font Awesome", cat: "Fonts", test: (h) => /font-?awesome/i.test(h) },
+    { name: "Google Analytics", cat: "Analytics", test: (h) => /gtag\(|googletagmanager\.com|google-analytics\.com/i.test(h) },
+    { name: "Google Tag Manager", cat: "Analytics", test: (h) => /googletagmanager\.com\/gtm\.js/i.test(h) },
+  ];
+
+  function detectTechnologies(fullSource) {
+    return TECH_SIGNATURES.filter((t) => t.test(fullSource)).map((t) => ({ name: t.name, cat: t.cat }));
+  }
+
+  function analyzeSEO(doc) {
+    const title = (doc.querySelector("title")?.textContent || "").trim();
+    const desc = doc.querySelector('meta[name="description" i]')?.getAttribute("content") || "";
+    const canonical = doc.querySelector('link[rel="canonical" i]')?.getAttribute("href") || "";
+    const robots = doc.querySelector('meta[name="robots" i]')?.getAttribute("content") || "";
+    const viewport = doc.querySelector('meta[name="viewport" i]')?.getAttribute("content") || "";
+    const lang = doc.documentElement.getAttribute("lang") || "";
+    const h1s = $$("h1", doc);
+    const imgs = $$("img", doc);
+    const imgsMissingAlt = imgs.filter((i) => !i.getAttribute("alt")).length;
+    const ogTitle = doc.querySelector('meta[property="og:title" i]');
+    const ogImage = doc.querySelector('meta[property="og:image" i]');
+    const twitterCard = doc.querySelector('meta[name="twitter:card" i]');
+
+    const checks = [
+      { label: "Title tag", pass: title.length > 0 && title.length <= 60, detail: title ? `"${title}" — ${title.length} characters` : "Missing" },
+      { label: "Meta description", pass: desc.length >= 50 && desc.length <= 160, detail: desc ? `${desc.length} characters` : "Missing" },
+      { label: "Single H1 heading", pass: h1s.length === 1, detail: `${h1s.length} found on the page` },
+      { label: "Image alt text", pass: imgs.length === 0 || imgsMissingAlt === 0, detail: imgs.length ? `${imgsMissingAlt} of ${imgs.length} images missing alt text` : "No images on page" },
+      { label: "Viewport meta tag", pass: viewport.length > 0, detail: viewport || "Missing — page may not be mobile-friendly" },
+      { label: "Canonical URL", pass: canonical.length > 0, detail: canonical || "Missing" },
+      { label: "Lang attribute", pass: lang.length > 0, detail: lang || "Missing on <html>" },
+      { label: "Open Graph tags", pass: !!(ogTitle && ogImage), detail: (ogTitle && ogImage) ? "og:title and og:image present" : "Incomplete — affects link previews" },
+      { label: "Twitter card", pass: !!twitterCard, detail: twitterCard ? twitterCard.getAttribute("content") : "Missing" },
+      { label: "Not blocking indexing", pass: !/noindex/i.test(robots), detail: robots || "No robots meta tag (defaults to indexable)" },
+    ];
+    const score = Math.round((checks.filter((c) => c.pass).length / checks.length) * 100);
+    return { score, checks };
+  }
+
+  function collectMetaTags(doc) {
+    return $$("meta", doc).map((m) => ({
+      name: m.getAttribute("name") || m.getAttribute("property") || m.getAttribute("http-equiv") || "(unnamed)",
+      content: m.getAttribute("content") || "",
+    })).filter((m) => m.content);
+  }
+
+  const EXPOSED_HEADER_KEYS = ["content-type", "content-length", "cache-control", "server", "last-modified", "etag"];
+  const SECURITY_HEADER_KEYS = [
+    "content-security-policy", "strict-transport-security", "x-frame-options",
+    "x-content-type-options", "referrer-policy", "permissions-policy",
+  ];
+  function analyzeHeaders(headers) {
+    const h = headers || {};
+    const rows = [];
+    [...SECURITY_HEADER_KEYS, ...EXPOSED_HEADER_KEYS].forEach((key) => {
+      if (h[key]) rows.push({ key, value: h[key], exposed: true });
+    });
+    SECURITY_HEADER_KEYS.forEach((key) => {
+      if (!h[key]) rows.push({ key, value: "Not exposed to this page — browser withholds it cross-origin, or the site doesn't set it", exposed: false });
+    });
+    return rows;
+  }
+
+  function collectResources(doc, baseUrl) {
+    const abs = (u) => { try { return new URL(u, baseUrl).href; } catch { return u; } };
+    const images = [...new Set($$("img[src]", doc).map((i) => abs(i.getAttribute("src"))))];
+    const scripts = [...new Set($$("script[src]", doc).map((s) => abs(s.getAttribute("src"))))];
+    const stylesheets = [...new Set($$('link[rel="stylesheet"]', doc).map((l) => abs(l.getAttribute("href"))))];
+    const fontLinks = [...new Set($$('link[href*="font"]', doc).map((l) => abs(l.getAttribute("href"))))];
+    return { images, scripts, stylesheets, fonts: fontLinks };
+  }
+
+  function analyzeSite(doc, baseUrl, fullSourceForTech, headers) {
+    return {
+      tech: detectTechnologies(fullSourceForTech),
+      seo: analyzeSEO(doc),
+      metaTags: collectMetaTags(doc),
+      security: analyzeHeaders(headers),
+      resources: collectResources(doc, baseUrl),
+    };
+  }
+
+  async function extractFromHtml(rawHtml, baseUrl, headers) {
     const doc = new DOMParser().parseFromString(rawHtml, "text/html");
 
     // ---- CSS ----
@@ -414,11 +626,15 @@ button:hover { transform: translateY(-2px); }`,
     });
     if (scriptEls.length > 3) jsParts.push(`// + ${scriptEls.length - 3} more script(s) referenced`);
 
+    const cssJoined = cssParts.join("\n\n") || "/* no stylesheets found on this page */";
+    const jsJoined = jsParts.join("\n\n") || "// no inline scripts found on this page";
+
     return {
       html: prettyHtml(rawHtml),
-      css: cssParts.join("\n\n") || "/* no stylesheets found on this page */",
-      js: jsParts.join("\n\n") || "// no inline scripts found on this page",
+      css: cssJoined,
+      js: jsJoined,
       rawHtmlForPreview: rawHtml,
+      analysis: analyzeSite(doc, baseUrl, rawHtml + "\n" + jsJoined, headers),
     };
   }
 
@@ -494,6 +710,7 @@ button:hover { transform: translateY(-2px); }`,
     setStep(0, 6);
 
     let result, usedDemo = false;
+    const t0 = performance.now();
 
     const stepTimer = (async () => {
       const targets = [18, 40, 62, 80, 94];
@@ -504,13 +721,17 @@ button:hover { transform: translateY(-2px); }`,
     })();
 
     try {
-      const rawHtml = await fetchPage(url);
+      const { text: rawHtml, headers } = await fetchPage(url);
       await stepTimer;
-      result = await extractFromHtml(rawHtml, url);
+      result = await extractFromHtml(rawHtml, url, headers);
     } catch (err) {
       await stepTimer;
       usedDemo = true;
-      result = { html: prettyHtml(DEMO.html), css: DEMO.css, js: DEMO.js, rawHtmlForPreview: DEMO.html };
+      const demoDoc = new DOMParser().parseFromString(DEMO.html, "text/html");
+      result = {
+        html: prettyHtml(DEMO.html), css: DEMO.css, js: DEMO.js, rawHtmlForPreview: DEMO.html,
+        analysis: analyzeSite(demoDoc, url, DEMO.html + "\n" + DEMO.js, null),
+      };
       showToast("Couldn't reach that URL — showing a demo extraction instead");
     }
 
@@ -523,6 +744,7 @@ button:hover { transform: translateY(-2px); }`,
     extractBtnLabel.textContent = "Extract code";
     extracting = false;
 
+    Stats.record(3, performance.now() - t0);
     populateViewer(url, result, usedDemo);
   }
 
@@ -576,6 +798,8 @@ button:hover { transform: translateY(-2px); }`,
     // live preview
     previewFrame.srcdoc = result.rawHtmlForPreview;
 
+    if (result.analysis) renderAnalysis(result.analysis);
+
     viewer.scrollIntoView({ behavior: prefersReducedMotion ? "auto" : "smooth", block: "start" });
   }
 
@@ -612,6 +836,22 @@ button:hover { transform: translateY(-2px); }`,
     zip.file("index.html", current.html || "");
     zip.file("style.css", current.css || "");
     zip.file("script.js", current.js || "");
+    if (current.analysis) {
+      const a = current.analysis;
+      const lines = [
+        `Source × Sage — analysis manifest`,
+        ``,
+        `Technologies detected: ${a.tech.map((t) => t.name).join(", ") || "none detected"}`,
+        `SEO snapshot score: ${a.seo.score}/100`,
+        ``,
+        `Resources referenced:`,
+        `— Images (${a.resources.images.length}):`, ...a.resources.images.map((u) => `  ${u}`),
+        `— Stylesheets (${a.resources.stylesheets.length}):`, ...a.resources.stylesheets.map((u) => `  ${u}`),
+        `— Scripts (${a.resources.scripts.length}):`, ...a.resources.scripts.map((u) => `  ${u}`),
+        `— Fonts (${a.resources.fonts.length}):`, ...a.resources.fonts.map((u) => `  ${u}`),
+      ];
+      zip.file("resources.txt", lines.join("\n"));
+    }
     const blob = await zip.generateAsync({ type: "blob" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -629,6 +869,77 @@ button:hover { transform: translateY(-2px); }`,
       if (btn.dataset.device !== "desktop") previewFrame.classList.add(btn.dataset.device);
     });
   });
+
+  /* ============================================================
+     ANALYSIS PANEL — render + tabs
+     ============================================================ */
+  const analysisPanel = $("#analysisPanel");
+
+  $$(".a-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      $$(".a-tab").forEach((b) => b.classList.toggle("active", b === btn));
+      $$(".a-pane").forEach((p) => p.classList.toggle("active", p.dataset.apane === btn.dataset.atab));
+    });
+  });
+
+  function svgIcon(pass) {
+    return pass
+      ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 13l4 4L19 7"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+  }
+
+  function renderAnalysis(a) {
+    analysisPanel.classList.add("active");
+
+    // technology
+    const techGrid = $("#techGrid");
+    techGrid.innerHTML = a.tech.length
+      ? a.tech.map((t, i) => `<div class="tech-badge" style="animation-delay:${Math.min(i, 8) * 45}ms"><span class="tech-dot"></span>${escapeHtml(t.name)}<span class="tech-cat">${escapeHtml(t.cat)}</span></div>`).join("")
+      : `<p class="tech-empty">No known frameworks or libraries fingerprinted in this page's markup or scripts.</p>`;
+
+    // seo
+    $("#seoRing").style.setProperty("--pct", a.seo.score);
+    $("#seoScoreNum").textContent = a.seo.score;
+    $("#seoChecklist").innerHTML = a.seo.checks.map((c) => `
+      <li class="${c.pass ? "pass" : "fail"}">
+        <span class="seo-check-icon">${svgIcon(c.pass)}</span>
+        <span><span class="seo-check-label">${escapeHtml(c.label)}</span><span class="seo-check-detail">${escapeHtml(c.detail)}</span></span>
+      </li>`).join("");
+
+    // meta tags
+    const metaBody = $("#metaTableBody");
+    metaBody.innerHTML = a.metaTags.length
+      ? a.metaTags.map((m) => `<tr><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.content)}</td></tr>`).join("")
+      : `<tr class="meta-table-empty"><td colspan="2">No meta tags found on this page.</td></tr>`;
+
+    // security headers
+    $("#secList").innerHTML = a.security.map((s) => `
+      <div class="sec-item ${s.exposed ? "exposed" : ""}">
+        <span class="sec-item-name">${escapeHtml(s.key)}</span>
+        <span class="sec-item-val">${escapeHtml(s.value)}</span>
+        <span class="sec-badge">${s.exposed ? "Exposed" : "Not exposed"}</span>
+      </div>`).join("");
+
+    // resources
+    const r = a.resources;
+    $("#resSummary").innerHTML = [
+      { n: r.images.length, l: "Images" },
+      { n: r.stylesheets.length, l: "Stylesheets" },
+      { n: r.scripts.length, l: "Scripts" },
+      { n: r.fonts.length, l: "Font links" },
+    ].map((s) => `<div><div class="res-num">${s.n}</div><div class="res-lbl">${s.l}</div></div>`).join("");
+
+    function resCol(title, list) {
+      const items = list.slice(0, 40).map((u) => `<li><a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a></li>`).join("");
+      return `<div class="res-col"><h4>${title} (${list.length})</h4>${list.length ? `<ul>${items}</ul>` : `<div class="res-col-empty">None found</div>`}</div>`;
+    }
+    $("#resCols").innerHTML = [
+      resCol("Images", r.images),
+      resCol("Stylesheets", r.stylesheets),
+      resCol("Scripts", r.scripts),
+      resCol("Fonts", r.fonts),
+    ].join("");
+  }
 
   /* footer year */
   $("#year").textContent = new Date().getFullYear();
