@@ -127,6 +127,16 @@ section { position: relative; }
 }
 .btn-icon:hover { border-color: var(--white); background: var(--g900); box-shadow: 0 0 16px rgba(255,255,255,0.1); }
 .btn-icon svg { width: 16px; height: 16px; }
+.btn-icon.success { border-color: var(--white); }
+.btn-icon.success svg { animation: icon-pop 220ms var(--ease-out); }
+@keyframes icon-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-icon.success svg { animation: none; }
+}
 
 /* ============================================================
    NAV
@@ -527,15 +537,28 @@ section { position: relative; }
   font-family: var(--font-mono);
 }
 .code-pane { display: none; }
-.code-pane.active { display: block; animation: fadein var(--dur-3) var(--ease-out); }
+.code-pane.active { display: flex; align-items: flex-start; animation: fadein var(--dur-3) var(--ease-out); }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
-.code-pane pre { margin: 0; padding: 22px 24px; }
+.line-gutter {
+  flex-shrink: 0;
+  padding: 22px 14px 22px 20px;
+  text-align: right;
+  color: var(--g600);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre;
+  user-select: none;
+  border-right: 1px solid var(--g850);
+}
+.code-pane pre { margin: 0; padding: 22px 24px; flex: 1; min-width: 0; }
 .code-pane code {
   font-family: var(--font-mono) !important;
   font-size: 13px !important;
   line-height: 1.7 !important;
   white-space: pre;
 }
+.viewer-actions .stat-file-meta { color: var(--g500); }
 .typing-cursor {
   display: inline-block; width: 7px; height: 14px; background: var(--white);
   margin-left: 1px; animation: caret 0.9s steps(1) infinite; vertical-align: text-bottom;

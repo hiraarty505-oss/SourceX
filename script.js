@@ -759,8 +759,26 @@ button:hover { transform: translateY(-2px); }`,
   const previewPanel = $("#previewPanel");
   const previewFrame = $("#previewFrame");
   const codeEls = { html: $("#codeHtml"), css: $("#codeCss"), js: $("#codeJs") };
+  const gutterEls = { html: $("#gutterHtml"), css: $("#gutterCss"), js: $("#gutterJs") };
   let current = { html: "", css: "", js: "" };
   let activeTab = "html";
+
+  function renderGutter(tab) {
+    const gutter = gutterEls[tab];
+    if (!gutter) return;
+    const lineCount = (current[tab] || "").split("\n").length;
+    let out = "";
+    for (let i = 1; i <= lineCount; i++) out += i + "\n";
+    gutter.textContent = out.trimEnd();
+  }
+
+  function renderFileMeta(tab) {
+    const text = current[tab] || "";
+    const lines = text.split("\n").length;
+    const bytes = new Blob([text]).size;
+    const size = bytes < 1024 ? `${bytes} B` : `${(bytes / 1024).toFixed(1)} KB`;
+    viewerStat.textContent = `${filenames[tab]} · ${lines} lines · ${size}`;
+  }
 
   async function typeCode(el, text) {
     el.textContent = "";
@@ -786,6 +804,8 @@ button:hover { transform: translateY(-2px); }`,
     codeEls.css.textContent = result.css;
     codeEls.js.textContent = result.js;
     if (window.hljs) { hljs.highlightElement(codeEls.css); hljs.highlightElement(codeEls.js); }
+    renderGutter("css");
+    renderGutter("js");
 
     if (prefersReducedMotion) {
       codeEls.html.textContent = result.html;
@@ -793,9 +813,10 @@ button:hover { transform: translateY(-2px); }`,
     } else {
       await typeCode(codeEls.html, result.html);
     }
+    renderGutter("html");
 
-    const totalLines = (result.html.split("\n").length + result.css.split("\n").length + result.js.split("\n").length);
-    viewerStat.textContent = `${totalLines} lines extracted`;
+    activeTab = "html";
+    renderFileMeta(activeTab);
 
     // live preview
     previewFrame.srcdoc = result.rawHtmlForPreview;
@@ -811,6 +832,7 @@ button:hover { transform: translateY(-2px); }`,
       activeTab = btn.dataset.tab;
       $$(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
       $$(".code-pane").forEach((p) => p.classList.toggle("active", p.dataset.pane === activeTab));
+      renderFileMeta(activeTab);
     });
   });
 
@@ -818,18 +840,37 @@ button:hover { transform: translateY(-2px); }`,
   const filenames = { html: "index.html", css: "style.css", js: "script.js" };
   const mimes = { html: "text/html", css: "text/css", js: "text/javascript" };
 
-  $("#copyBtn").addEventListener("click", async () => {
+  const copyBtn = $("#copyBtn");
+  const copyBtnIcon = copyBtn.innerHTML;
+  const checkIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 13l4 4L19 7"/></svg>`;
+  copyBtn.addEventListener("click", async () => {
     try {
       await navigator.clipboard.writeText(current[activeTab] || "");
       showToast(`Copied ${filenames[activeTab]} to clipboard`);
+      copyBtn.innerHTML = checkIcon;
+      copyBtn.classList.add("success");
+      clearTimeout(copyBtn._resetT);
+      copyBtn._resetT = setTimeout(() => {
+        copyBtn.innerHTML = copyBtnIcon;
+        copyBtn.classList.remove("success");
+      }, 1200);
     } catch {
       showToast("Copy failed — select and copy manually");
     }
   });
 
-  $("#downloadOneBtn").addEventListener("click", () => {
+  const downloadOneBtn = $("#downloadOneBtn");
+  const downloadOneIcon = downloadOneBtn.innerHTML;
+  downloadOneBtn.addEventListener("click", () => {
     download(filenames[activeTab], current[activeTab] || "", mimes[activeTab]);
     showToast(`Downloading ${filenames[activeTab]}`);
+    downloadOneBtn.innerHTML = checkIcon;
+    downloadOneBtn.classList.add("success");
+    clearTimeout(downloadOneBtn._resetT);
+    downloadOneBtn._resetT = setTimeout(() => {
+      downloadOneBtn.innerHTML = downloadOneIcon;
+      downloadOneBtn.classList.remove("success");
+    }, 1200);
   });
 
   $("#downloadAllBtn").addEventListener("click", async () => {
