@@ -123,6 +123,91 @@
   </div>
 </section>
 
+<!-- ============ RESULTS (real extraction) ============ -->
+<section class="section results-section" id="results" hidden>
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Scan complete</div>
+      <h2 id="resultsTitle">Results</h2>
+      <p id="resultsSub">Source extracted client-side. Nothing stored.</p>
+    </div>
+
+    <div class="results-tabs">
+      <button class="results-tab active" data-tab="source">Source</button>
+      <button class="results-tab" data-tab="preview">Live Preview</button>
+      <button class="results-tab" data-tab="analysis">Analysis</button>
+      <button class="results-tab" data-tab="meta">Meta &amp; Headers</button>
+    </div>
+
+    <div class="results-panels">
+      <!-- SOURCE -->
+      <div class="results-panel active" id="panel-source">
+        <div class="source-toolbar">
+          <div class="source-files" id="sourceFiles">
+            <button class="src-file active" data-file="html">index.html</button>
+            <button class="src-file" data-file="css">style.css</button>
+            <button class="src-file" data-file="js">script.js</button>
+          </div>
+          <div class="source-actions">
+            <span id="sourceLines" class="mono">0 lines</span>
+            <button class="btn btn-ghost btn-sm" id="copySource">Copy</button>
+            <button class="btn btn-ghost btn-sm" id="downloadSource">Download</button>
+          </div>
+        </div>
+        <pre class="source-code" id="sourceCode"><code></code></pre>
+      </div>
+
+      <!-- PREVIEW -->
+      <div class="results-panel" id="panel-preview">
+        <div class="preview-chrome">
+          <div class="panel-dots"><span></span><span></span><span></span></div>
+          <div class="preview-url mono" id="previewUrl"></div>
+          <div class="preview-devices">
+            <button class="dev-btn active" data-w="100%">Desktop</button>
+            <button class="dev-btn" data-w="768px">Tablet</button>
+            <button class="dev-btn" data-w="390px">Mobile</button>
+          </div>
+        </div>
+        <div class="preview-frame-wrap">
+          <iframe id="previewFrame" sandbox="allow-scripts allow-same-origin" title="Live preview"></iframe>
+        </div>
+      </div>
+
+      <!-- ANALYSIS -->
+      <div class="results-panel" id="panel-analysis">
+        <div class="analysis-grid">
+          <div class="analysis-card">
+            <h3>Technology stack</h3>
+            <div class="tech-list" id="techList"></div>
+          </div>
+          <div class="analysis-card">
+            <h3>SEO snapshot</h3>
+            <div class="seo-list" id="seoList"></div>
+          </div>
+          <div class="analysis-card">
+            <h3>DOM &amp; assets</h3>
+            <div class="dom-stats" id="domStats"></div>
+          </div>
+          <div class="analysis-card">
+            <h3>Security headers</h3>
+            <div class="sec-list" id="secList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- META -->
+      <div class="results-panel" id="panel-meta">
+        <div class="meta-table-wrap">
+          <table class="meta-table" id="metaTable">
+            <thead><tr><th>Name / Property</th><th>Content</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <div class="wrap"><div class="hairline"></div></div>
 
 <!-- ============ TERMINAL SHOWCASE ============ -->

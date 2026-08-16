@@ -220,10 +220,10 @@
 
   /* ---------------- FAQ ---------------- */
   const faqs = [
-    { q: "Does this work on any website?", a: "Most public pages, yes. Some sites block cross-origin requests entirely — in that case Source × Sage shows a clear error and offers a demo scan so you can still see how it works." },
+    { q: "Does this work on any website?", a: "Most public pages, yes. The scanner uses public CORS proxies (including Cloudflare-backed ones). Sites that aggressively block proxies will fall back to a demo. For production reliability, deploy your own Cloudflare Worker proxy." },
     { q: "Is the extracted code safe to reuse?", a: "Source × Sage copies markup and styles for learning and reference. You're responsible for respecting the original site's copyright and license before shipping it elsewhere." },
-    { q: "Does it run in the browser or on a server?", a: "Entirely in your browser. Nothing you paste is stored — the request goes out, the response comes back, and it stays on your machine." },
-    { q: "What if a site has hundreds of files?", a: "Source × Sage focuses on the document you loaded — its inline and linked styles, inline and linked scripts, and the rendered markup — rather than crawling an entire site." },
+    { q: "Does it run in the browser or on a server?", a: "Entirely in your browser. Nothing you paste is stored — the request goes out through a proxy, the response comes back, and it stays on your machine." },
+    { q: "What if a site has hundreds of files?", a: "Source × Sage focuses on the document you loaded — its inline and linked styles, inline and linked scripts, and the rendered markup — rather than crawling an entire site. Linked CSS/JS contents are listed but not fetched to avoid extra CORS issues." },
   ];
   $("#faqList").innerHTML = faqs.map((f, i) => `
     <div class="faq-item${i === 0 ? " open" : ""}">
@@ -237,46 +237,335 @@
     if (!wasOpen) item.classList.add("open");
   }));
 
-  /* ---------------- scanner demo buttons ---------------- */
+  /* ---------------- real scanner ---------------- */
   $$(".scan-hint button").forEach((b) => b.addEventListener("click", () => {
     $("#urlInput").value = b.dataset.demo;
     runExtraction(b.dataset.demo);
   }));
 
-  const scanSteps = [
-    "Resolving host & fetching document…",
-    "Parsing DOM structure…",
-    "Collecting stylesheets…",
-    "Collecting scripts…",
-    "Fingerprinting stack…",
-    "Formatting output…",
-  ];
   function isValidUrl(str) {
-    try { const u = new URL(str.includes("://") ? str : "https://" + str); return /\./.test(u.hostname); }
-    catch { return false; }
+    try {
+      const u = new URL(str.includes("://") ? str : "https://" + str);
+      return /\./.test(u.hostname);
+    } catch { return false; }
   }
-  function runExtraction(raw) {
-    if (!isValidUrl(raw || "")) { showToast("Enter a valid URL to analyze"); return; }
-    const progress = $("#scanProgress"), fill = $("#scanFill"), label = $("#scanLabel"), pct = $("#scanPercent"), log = $("#scanLog");
+
+  function normalizeUrl(raw) {
+    return raw.includes("://") ? raw : "https://" + raw;
+  }
+
+  // Proxy order: own Vercel API first, then public fallbacks
+  const PROXIES = [
+    (url) => `/api/proxy?url=${encodeURIComponent(url)}`,
+    (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://corsproxy.org/?${encodeURIComponent(url)}`,
+  ];
+
+  let lastResult = null;
+
+  async function fetchViaProxy(targetUrl) {
+    let lastErr = null;
+    for (const build of PROXIES) {
+      try {
+        const res = await fetch(build(targetUrl), {
+          method: "GET",
+          headers: { Accept: "text/html,application/xhtml+xml,*/*" },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        if (!text || text.length < 40) throw new Error("Empty response");
+        return { html: text, headers: res.headers };
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("All proxies failed");
+  }
+
+  function parseDocument(html, baseUrl) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    // Collect CSS
+    const cssParts = [];
+    doc.querySelectorAll("style").forEach((s) => {
+      if (s.textContent.trim()) cssParts.push(`/* inline style */\n${s.textContent.trim()}`);
+    });
+    doc.querySelectorAll('link[rel="stylesheet"], link[rel="preload"][as="style"]').forEach((l) => {
+      const href = l.getAttribute("href");
+      if (href) cssParts.push(`/* linked: ${href} */\n/* (content not fetched – CORS on assets) */`);
+    });
+
+    // Collect JS
+    const jsParts = [];
+    doc.querySelectorAll("script").forEach((s) => {
+      if (s.src) {
+        jsParts.push(`/* external: ${s.src} */\n`);
+      } else if (s.textContent.trim()) {
+        jsParts.push(`/* inline script */\n${s.textContent.trim()}`);
+      }
+    });
+
+    // Pretty-print HTML (basic)
+    const prettyHtml = html
+      .replace(/>\s*</g, ">\n<")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join("\n");
+
+    // Fingerprint
+    const tech = [];
+    const htmlLower = html.toLowerCase();
+    const signals = [
+      { name: "React", test: () => /react|__next|data-reactroot|_jsx/i.test(html) },
+      { name: "Next.js", test: () => /__next|_next\/static|next-route/i.test(html) },
+      { name: "Vue", test: () => /vue\.|data-v-|__vue/i.test(html) },
+      { name: "Nuxt", test: () => /__nuxt|nuxt/i.test(html) },
+      { name: "Angular", test: () => /ng-version|ng-app|_ngcontent/i.test(html) },
+      { name: "Svelte", test: () => /svelte|__svelte/i.test(html) },
+      { name: "Tailwind CSS", test: () => /tailwind|class="[^"]*(?:flex|grid|px-|py-|text-|bg-)/i.test(html) },
+      { name: "Bootstrap", test: () => /bootstrap|btn-primary|container-fluid/i.test(html) },
+      { name: "jQuery", test: () => /jquery/i.test(html) },
+      { name: "WordPress", test: () => /wp-content|wp-includes/i.test(html) },
+      { name: "Vercel", test: () => /vercel|x-vercel/i.test(html) },
+      { name: "Cloudflare", test: () => /cloudflare|cf-ray|__cf/i.test(html) },
+      { name: "GSAP", test: () => /gsap|ScrollTrigger/i.test(html) },
+      { name: "Framer Motion", test: () => /framer-motion|data-framer/i.test(html) },
+    ];
+    signals.forEach((s) => { if (s.test()) tech.push(s.name); });
+
+    // SEO
+    const title = doc.querySelector("title")?.textContent?.trim() || "";
+    const desc = doc.querySelector('meta[name="description"]')?.content || "";
+    const canonical = doc.querySelector('link[rel="canonical"]')?.href || "";
+    const h1s = [...doc.querySelectorAll("h1")].map((h) => h.textContent.trim()).filter(Boolean);
+    const imgs = doc.querySelectorAll("img");
+    const imgsWithAlt = [...imgs].filter((i) => i.alt).length;
+
+    // Meta tags
+    const metas = [];
+    doc.querySelectorAll("meta").forEach((m) => {
+      const name = m.getAttribute("name") || m.getAttribute("property") || m.getAttribute("http-equiv");
+      const content = m.getAttribute("content");
+      if (name && content) metas.push({ name, content });
+    });
+
+    // DOM stats
+    const allEls = doc.querySelectorAll("*").length;
+    const scripts = doc.querySelectorAll("script").length;
+    const styles = doc.querySelectorAll("style, link[rel='stylesheet']").length;
+    const links = doc.querySelectorAll("a[href]").length;
+
+    return {
+      html: prettyHtml,
+      css: cssParts.join("\n\n") || "/* no styles found */",
+      js: jsParts.join("\n\n") || "/* no scripts found */",
+      tech,
+      seo: { title, desc, canonical, h1s, imgCount: imgs.length, imgsWithAlt },
+      metas,
+      stats: { elements: allEls, scripts, styles, links, size: html.length },
+      baseUrl,
+    };
+  }
+
+  function logStep(log, text) {
+    const row = document.createElement("div");
+    row.textContent = "✓ " + text;
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  async function runExtraction(raw) {
+    if (!isValidUrl(raw || "")) {
+      showToast("Enter a valid URL to analyze");
+      return;
+    }
+    const target = normalizeUrl(raw.trim());
+    const progress = $("#scanProgress");
+    const fill = $("#scanFill");
+    const label = $("#scanLabel");
+    const pct = $("#scanPercent");
+    const log = $("#scanLog");
+    const btn = $("#extractBtn");
+    const btnLabel = $("#extractBtnLabel");
+
     progress.classList.add("open");
     log.innerHTML = "";
-    let step = 0;
-    const per = 100 / scanSteps.length;
-    const t = setInterval(() => {
-      if (step >= scanSteps.length) { clearInterval(t); label.textContent = "Done"; pct.textContent = "100%"; showToast("Scan complete"); return; }
-      label.textContent = scanSteps[step];
-      const p = Math.round((step + 1) * per);
-      pct.textContent = p + "%";
-      fill.style.width = p + "%";
-      const row = document.createElement("div");
-      row.textContent = "✓ " + scanSteps[step];
-      log.appendChild(row);
-      log.scrollTop = log.scrollHeight;
-      step++;
-    }, 420);
+    btn.disabled = true;
+    btnLabel.textContent = "Scanning…";
+    fill.style.width = "8%";
+    pct.textContent = "8%";
+    label.textContent = "Connecting via proxy…";
+
+    try {
+      logStep(log, "Resolving host & fetching document…");
+      fill.style.width = "25%";
+      pct.textContent = "25%";
+
+      const { html } = await fetchViaProxy(target);
+
+      logStep(log, `Fetched ${Math.round(html.length / 1024)} KB`);
+      fill.style.width = "45%";
+      pct.textContent = "45%";
+      label.textContent = "Parsing DOM…";
+
+      await new Promise((r) => setTimeout(r, 180));
+      const result = parseDocument(html, target);
+      lastResult = result;
+
+      logStep(log, `Parsed ${result.stats.elements} DOM nodes`);
+      fill.style.width = "65%";
+      pct.textContent = "65%";
+      label.textContent = "Fingerprinting stack…";
+
+      await new Promise((r) => setTimeout(r, 160));
+      logStep(log, result.tech.length ? `Detected: ${result.tech.join(", ")}` : "No major frameworks detected");
+      fill.style.width = "85%";
+      pct.textContent = "85%";
+      label.textContent = "Building results…";
+
+      await new Promise((r) => setTimeout(r, 120));
+      logStep(log, "Formatting source & analysis");
+      fill.style.width = "100%";
+      pct.textContent = "100%";
+      label.textContent = "Done";
+
+      renderResults(result, target);
+      showToast("Scan complete — real source extracted");
+      $("#results").hidden = false;
+      $("#results").scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (err) {
+      console.error(err);
+      logStep(log, "Fetch failed: " + (err.message || "network / CORS"));
+      label.textContent = "Failed";
+      fill.style.width = "100%";
+      pct.textContent = "—";
+      showToast("Could not reach page. Try another URL or your own Cloudflare Worker.");
+      // Show a minimal fallback so the UI still demonstrates the pipeline
+      const fallbackHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Demo Page</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="card">
+<p class="eyebrow">Demo extraction</p>
+<h1>This is a fallback preview</h1>
+<p>The real page couldn't be reached from your browser, so Extract is showing a small self-contained example instead — the tool still works end-to-end.</p>
+<button id="pulse">Click me</button>
+</main>
+<script src="script.js"></script>
+</body>
+</html>`;
+      lastResult = parseDocument(fallbackHtml, target);
+      lastResult.tech = ["Demo"];
+      renderResults(lastResult, target);
+      $("#results").hidden = false;
+    } finally {
+      btn.disabled = false;
+      btnLabel.textContent = "Analyze website";
+    }
   }
+
+  function renderResults(result, url) {
+    $("#resultsTitle").textContent = new URL(url).hostname;
+    $("#resultsSub").textContent = `${result.stats.elements} elements · ${Math.round(result.stats.size / 1024)} KB · ${result.tech.length} technologies`;
+
+    // Source
+    const files = { html: result.html, css: result.css, js: result.js };
+    let currentFile = "html";
+    const codeEl = $("#sourceCode code");
+    function showFile(name) {
+      currentFile = name;
+      codeEl.textContent = files[name];
+      $("#sourceLines").textContent = files[name].split("\n").length + " lines";
+      $$(".src-file").forEach((b) => b.classList.toggle("active", b.dataset.file === name));
+    }
+    showFile("html");
+    $$(".src-file").forEach((b) => {
+      b.onclick = () => showFile(b.dataset.file);
+    });
+    $("#copySource").onclick = () => {
+      navigator.clipboard.writeText(files[currentFile]).then(() => showToast("Copied to clipboard"));
+    };
+    $("#downloadSource").onclick = () => {
+      const blob = new Blob([files[currentFile]], { type: "text/plain" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = currentFile === "html" ? "index.html" : currentFile === "css" ? "style.css" : "script.js";
+      a.click();
+    };
+
+    // Preview
+    $("#previewUrl").textContent = url;
+    const frame = $("#previewFrame");
+    const srcdoc = result.html
+      .replace(/<script[\s\S]*?<\/script>/gi, "") // strip scripts for safety
+      .replace(/<link[^>]+rel=["']stylesheet["'][^>]*>/gi, "");
+    frame.srcdoc = srcdoc || result.html;
+    $$(".dev-btn").forEach((b) => {
+      b.onclick = () => {
+        $$(".dev-btn").forEach((x) => x.classList.remove("active"));
+        b.classList.add("active");
+        frame.style.width = b.dataset.w;
+      };
+    });
+
+    // Analysis
+    $("#techList").innerHTML = result.tech.length
+      ? result.tech.map((t) => `<span class="tech-badge found">${t}</span>`).join("")
+      : `<span class="tech-badge">No frameworks detected</span>`;
+
+    const seo = result.seo;
+    $("#seoList").innerHTML = `
+      <div class="seo-item">Title <span>${seo.title ? seo.title.slice(0, 60) + (seo.title.length > 60 ? "…" : "") : "—"}</span></div>
+      <div class="seo-item">Description <span>${seo.desc ? "present" : "missing"}</span></div>
+      <div class="seo-item">H1 count <span>${seo.h1s.length}</span></div>
+      <div class="seo-item">Images w/ alt <span>${seo.imgsWithAlt}/${seo.imgCount}</span></div>
+      <div class="seo-item">Canonical <span>${seo.canonical ? "yes" : "no"}</span></div>
+    `;
+
+    $("#domStats").innerHTML = `
+      <div class="dom-stat"><strong>${result.stats.elements}</strong>Elements</div>
+      <div class="dom-stat"><strong>${result.stats.scripts}</strong>Scripts</div>
+      <div class="dom-stat"><strong>${result.stats.styles}</strong>Stylesheets</div>
+      <div class="dom-stat"><strong>${result.stats.links}</strong>Links</div>
+    `;
+
+    $("#secList").innerHTML = `
+      <div class="sec-item">Client-side only <span>no server headers visible</span></div>
+      <div class="sec-item">Note <span>Use a Cloudflare Worker to capture response headers</span></div>
+    `;
+
+    // Meta table
+    const tbody = $("#metaTable tbody");
+    tbody.innerHTML = result.metas.length
+      ? result.metas.map((m) => `<tr><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.content)}</td></tr>`).join("")
+      : `<tr><td colspan="2">No meta tags found</td></tr>`;
+
+    // Tabs
+    $$(".results-tab").forEach((tab) => {
+      tab.onclick = () => {
+        $$(".results-tab").forEach((t) => t.classList.remove("active"));
+        $$(".results-panel").forEach((p) => p.classList.remove("active"));
+        tab.classList.add("active");
+        $(`#panel-${tab.dataset.tab}`).classList.add("active");
+      };
+    });
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
   $("#extractBtn").addEventListener("click", () => runExtraction($("#urlInput").value));
-  $("#urlInput").addEventListener("keydown", (e) => { if (e.key === "Enter") runExtraction(e.target.value); });
+  $("#urlInput").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") runExtraction(e.target.value);
+  });
 
   /* ---------------- toast ---------------- */
   function showToast(msg) {
