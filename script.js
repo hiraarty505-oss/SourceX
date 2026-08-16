@@ -303,6 +303,7 @@
   }
 
   async function heroDemoLoop() {
+    const heroDemoEl = $("#heroDemo");
     const urlEl = $("#heroDemoUrl");
     const statusWrap = $("#heroDemoStatus");
     const statusText = $("#heroDemoStatusText");
@@ -315,6 +316,7 @@
 
     const settle = (demo) => {
       urlEl.textContent = demo.url;
+      if (heroDemoEl) heroDemoEl.dataset.state = "done";
       statusWrap.classList.add("done");
       checks.forEach((c) => c.classList.add("done"));
       detected.classList.add("in");
@@ -335,6 +337,7 @@
       const demo = heroDemos[i % heroDemos.length];
 
       // reset
+      if (heroDemoEl) heroDemoEl.dataset.state = "idle";
       statusWrap.classList.remove("done");
       statusWrap.classList.remove("scanning");
       statusText.textContent = "Waiting for URL…";
@@ -347,6 +350,7 @@
       await typeText(urlEl, demo.url, 42);
       await new Promise((r) => setTimeout(r, 320));
 
+      if (heroDemoEl) heroDemoEl.dataset.state = "scanning";
       statusWrap.classList.add("scanning");
       statusText.textContent = "Scanning…";
 
@@ -371,6 +375,7 @@
       ready.classList.add("in");
       await new Promise((r) => setTimeout(r, 380));
       ready.classList.add("settled");
+      if (heroDemoEl) heroDemoEl.dataset.state = "done";
       if (files) files.classList.add("in");
 
       await new Promise((r) => setTimeout(r, 2600));
@@ -820,14 +825,14 @@ button:hover { transform: translateY(-2px); }`,
   }
 
   /* small count-up used for the reveal moment when a scan completes */
-  function countUpText(el, target, { decimals = 0, duration = 700 } = {}) {
+  function countUpText(el, target, { decimals = 0, duration = 700, suffix = "" } = {}) {
     if (!el) return;
-    if (prefersReducedMotion) { el.textContent = target.toFixed(decimals); return; }
+    if (prefersReducedMotion) { el.textContent = target.toFixed(decimals) + suffix; return; }
     const t0 = performance.now();
     function step(t) {
       const p = Math.min((t - t0) / duration, 1);
       const eased = 1 - Math.pow(1 - p, 3);
-      el.textContent = (target * eased).toFixed(decimals);
+      el.textContent = (target * eased).toFixed(decimals) + suffix;
       if (p < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
@@ -897,9 +902,11 @@ button:hover { transform: translateY(-2px); }`,
     countUpText($("#metaLines"), totalLines, { duration: 650 });
     setTimeout(() => countUpText($("#metaResources"), resourceTotal, { duration: 650 }), 90);
 
-    $("#wsTreeMetaHtml").textContent = `${hStats.lines}L`;
-    $("#wsTreeMetaCss").textContent = `${cStats.lines}L`;
-    $("#wsTreeMetaJs").textContent = `${jStats.lines}L`;
+    // sidebar line counts finish in the same beat as the metabar — one
+    // workspace computing itself, not a report populated in silence
+    countUpText($("#wsTreeMetaHtml"), hStats.lines, { duration: 500, suffix: "L" });
+    setTimeout(() => countUpText($("#wsTreeMetaCss"), cStats.lines, { duration: 500, suffix: "L" }), 60);
+    setTimeout(() => countUpText($("#wsTreeMetaJs"), jStats.lines, { duration: 500, suffix: "L" }), 120);
     $("#wsResImages").textContent = resCounts.images.length;
     $("#wsResCss").textContent = resCounts.stylesheets.length;
     $("#wsResJs").textContent = resCounts.scripts.length;

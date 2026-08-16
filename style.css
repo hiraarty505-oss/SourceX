@@ -247,13 +247,13 @@ section { position: relative; }
   100% { top: 100%; }
 }
 .hero-inner { position: relative; z-index: 2; max-width: 780px; margin: 0 auto; text-align: center; }
-.hero-inner .eyebrow { justify-content: center; margin-bottom: 26px; }
+.hero-inner .eyebrow { justify-content: center; margin-bottom: 22px; }
 .hero h1 {
-  font-size: clamp(38px, 6vw, 68px);
+  font-size: clamp(34px, 5.2vw, 58px);
   line-height: 1.06;
   letter-spacing: -0.03em;
   font-weight: 700;
-  margin-bottom: 22px;
+  margin-bottom: 14px;
 }
 .hero h1 .muted { color: var(--g500); }
 .hero p {
@@ -262,7 +262,9 @@ section { position: relative; }
   max-width: 540px;
   margin: 0 auto 32px;
 }
-.hero-cta { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 32px 0 44px; }
+/* headline steps back so the live demo — not the copy — carries the pitch */
+.hero-sub-quiet { font-size: 15px; color: var(--g600); margin-bottom: 26px; }
+.hero-cta { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 28px 0 44px; }
 
 /* ---------- live stats strip ---------- */
 .stats-strip {
@@ -312,6 +314,16 @@ section { position: relative; }
   box-shadow: 0 40px 100px -30px rgba(0,0,0,0.9);
   overflow: hidden;
 }
+/* the demo is the hero's focal point, not a supporting screenshot — sized and
+   lit accordingly, and its border reads the current step even muted/screenshotted */
+.hero-demo-dominant {
+  max-width: 720px;
+  border-color: var(--g700);
+  box-shadow: 0 50px 130px -30px rgba(0,0,0,0.95), 0 0 0 1px rgba(255,255,255,0.02);
+  transition: border-color var(--dur-4) var(--ease-out);
+}
+.hero-demo-dominant[data-state="scanning"] { border-color: var(--g500); }
+.hero-demo-dominant[data-state="done"] { border-color: var(--white); }
 .hero-demo-bar {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 16px;
@@ -719,15 +731,10 @@ section { position: relative; }
 .ws-tree-meta { margin-left: auto; font-size: 10.5px; color: var(--g600); white-space: nowrap; }
 .ws-tree-asset { cursor: pointer; }
 
-/* signature moment continued — file tree resolves in with the sweep, not before */
-.workstation.sweep .ws-tree-item {
-  animation: tree-item-in 340ms var(--ease-out-soft) backwards;
-}
-.workstation.sweep .ws-tree-group:nth-child(1) .ws-tree-item:nth-child(2) { animation-delay: 40ms; }
-.workstation.sweep .ws-tree-group:nth-child(1) .ws-tree-item:nth-child(3) { animation-delay: 80ms; }
-.workstation.sweep .ws-tree-group:nth-child(1) .ws-tree-item:nth-child(4) { animation-delay: 120ms; }
-.workstation.sweep .ws-tree-group:nth-child(1) .ws-tree-item:nth-child(5) { animation-delay: 160ms; }
-@keyframes tree-item-in { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: translateX(0); } }
+/* signature moment continued — a coordinated "workspace computes itself" beat:
+   file-tree line counts, once the source is written, so the sidebar and the
+   metabar finish counting in the same breath. No re-animating content that
+   was already on screen (that would just flicker). */
 .workstation.sweep .ws-metabar .ok-dot { animation: dot-ping 900ms var(--ease-out-soft); }
 @keyframes dot-ping {
   0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.5); }
@@ -735,7 +742,6 @@ section { position: relative; }
   100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .workstation.sweep .ws-tree-item { animation: none; }
   .workstation.sweep .ws-metabar .ok-dot { animation: none; }
 }
 
@@ -796,6 +802,7 @@ mark.search-hit.current { background: var(--white); color: var(--black); }
 
 .code-scroll {
   max-height: 460px; overflow: auto;
+  overscroll-behavior: contain;
   font-family: var(--font-mono);
   flex: 1;
 }
@@ -1303,14 +1310,14 @@ footer { padding: 64px 0 40px; }
   .hero { padding: 130px 0 70px; }
   .footer-top { flex-direction: column; gap: 32px; }
   .ws-body { flex-direction: column; }
-  .ws-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--g800); display: flex; gap: 6px; overflow-x: auto; padding: 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+  .ws-sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--g800); display: flex; gap: 6px; overflow-x: auto; overscroll-behavior-x: contain; padding: 10px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
   .ws-tree-group { margin-bottom: 0; display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
   .ws-tree-label { display: none; }
   .ws-tree-item { flex-direction: row; white-space: nowrap; scroll-snap-align: start; }
   .ws-metabar { padding: 12px 16px; }
   .ws-meta-stats { gap: 12px; font-size: 11px; }
   .ws-search { max-width: none; order: 3; margin: 8px 4px 8px; flex-basis: 100%; }
-  .tabs-left { order: 1; flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
+  .tabs-left { order: 1; flex: 1 1 auto; min-width: 0; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scroll-snap-type: x proximity; }
   .tab-btn { flex-shrink: 0; scroll-snap-align: start; }
   .tabs-right { order: 2; flex-shrink: 0; }
   .code-scroll { max-height: 52vh; }
@@ -1323,13 +1330,13 @@ footer { padding: 64px 0 40px; }
   .viewer-actions { padding-bottom: 16px; }
 }
 @media (pointer: coarse) {
-  /* touch targets — WCAG 2.5.5 / platform minimums (~44px) */
-  .btn-icon { width: 42px; height: 42px; }
+  /* touch targets — WCAG 2.5.5 / platform minimums (44px) */
+  .btn-icon { width: 44px; height: 44px; }
   .btn-sm { padding: 11px 16px; }
   .device-toggle button { padding: 10px 14px; }
   .scanner-hint button { padding: 9px 13px; }
   .tab-btn, .a-tab { padding-top: 16px; padding-bottom: 16px; }
-  .ws-tree-item { padding: 12px 12px; }
+  .ws-tree-item { padding: 12px 12px; min-height: 44px; }
   .nav-links.mobile-open a { padding: 16px 12px; }
   .ws-search-kbd { display: none; }
 }
