@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Source × Sage — Reveal What Powers Any Website</title>
+<meta name="description" content="Extract source code, detect technologies, analyze structure, and discover how modern websites are built. A developer tool, not a guessing game.">
+<meta name="theme-color" content="#08080a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="grid-bg" aria-hidden="true"></div>
+<div class="noise-layer" aria-hidden="true"></div>
+<div class="spotlight" id="spotlight" aria-hidden="true"></div>
+
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader-mark">
+    <svg viewBox="0 0 32 32" fill="none"><path d="M16 2L28 9V23L16 30L4 23V9L16 2Z" stroke="currentColor" stroke-width="1.4"/></svg>
+  </div>
+  <div class="loader-bar"><div class="loader-fill" id="loaderFill"></div></div>
+</div>
+
+<!-- ============ NAV ============ -->
+<nav class="nav" id="nav">
+  <div class="wrap nav-inner">
+    <a href="#top" class="logo">
+      <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2L28 9V23L16 30L4 23V9L16 2Z" stroke="currentColor" stroke-width="1.5"/><path d="M16 2V30M4 9L28 23M28 9L4 23" stroke="currentColor" stroke-width="0.7" opacity=".5"/></svg>
+      <span class="logo-word">source<span class="logo-x">×</span>sage</span>
+    </a>
+    <div class="nav-links">
+      <a href="#terminal">Product</a>
+      <a href="#features">Capabilities</a>
+      <a href="#trust">Trust</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <div class="nav-cta">
+      <a href="#terminal" class="btn btn-ghost btn-sm">View demo</a>
+      <a href="#scanner" class="btn btn-primary btn-sm">Analyze website</a>
+    </div>
+    <button class="nav-burger" id="burger" aria-label="Menu"><span></span><span></span></button>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <div class="eyebrow reveal-up" data-d="0"><span class="pulse-dot"></span>Live source inspection engine</div>
+      <h1 class="reveal-up" data-d="1">Reveal what powers<br>any website<span class="cursor-caret">_</span></h1>
+      <p class="hero-sub reveal-up" data-d="2">Extract source code, detect technologies, analyze structure, and discover how modern websites are built — entirely in your browser, nothing stored.</p>
+      <div class="hero-cta reveal-up" data-d="3">
+        <a href="#scanner" class="btn btn-primary">Analyze website <span class="arrow">→</span></a>
+        <a href="#terminal" class="btn btn-ghost">View demo</a>
+      </div>
+      <div class="hero-meta reveal-up" data-d="4">
+        <div class="hero-meta-item"><span class="mono">$</span> zero setup, zero login</div>
+        <div class="hero-meta-item"><span class="mono">$</span> runs client-side</div>
+      </div>
+    </div>
+
+    <div class="hero-panel reveal-up" data-d="2" id="scanPanel">
+      <div class="panel-chrome">
+        <div class="panel-dots"><span></span><span></span><span></span></div>
+        <div class="panel-url"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg><span id="panelUrl"></span><span class="type-caret"></span></div>
+        <div class="panel-live"><span class="live-dot"></span>LIVE</div>
+      </div>
+      <div class="panel-body">
+        <div class="term" id="term"></div>
+        <div class="panel-badges" id="panelBadges"></div>
+      </div>
+      <div class="panel-footer">
+        <div class="panel-files">
+          <span><i>&lt;/&gt;</i>index.html</span>
+          <span><i>{ }</i>style.css</span>
+          <span><i>( )</i>script.js</span>
+        </div>
+        <span class="panel-status" id="panelStatus">Waiting for target…</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap hero-stats reveal-up" data-d="5">
+    <div class="hstat"><span class="hstat-num" id="s1" data-target="42918">0</span><span class="hstat-label">Websites analyzed</span></div>
+    <div class="hstat"><span class="hstat-num" id="s2" data-target="128340">0</span><span class="hstat-label">Source files processed</span></div>
+    <div class="hstat"><span class="hstat-num" id="s3" data-target="1.4" data-suffix="s">0</span><span class="hstat-label">Average scan speed</span></div>
+    <div class="hstat"><span class="hstat-num" id="s4" data-target="98.6" data-suffix="%">0</span><span class="hstat-label">User satisfaction</span></div>
+  </div>
+</section>
+
+<div class="wrap"><div class="hairline"></div></div>
+
+<!-- ============ SCANNER / TERMINAL ============ -->
+<section class="section" id="scanner">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow reveal">Analyze</div>
+      <h2 class="reveal">Point it at a real URL</h2>
+      <p class="reveal">We fetch the document, walk the DOM, and split it into clean, formatted source — with a full technical read on what's underneath.</p>
+    </div>
+    <div class="scan-card reveal">
+      <div class="scan-row">
+        <div class="scan-input-wrap" id="inputWrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" id="urlInput" placeholder="https://example.com" autocomplete="off" spellcheck="false">
+        </div>
+        <button class="btn btn-primary" id="extractBtn"><span id="extractBtnLabel">Analyze website</span></button>
+      </div>
+      <div class="scan-hint"><span>Try:</span>
+        <button data-demo="https://vercel.com">vercel.com</button>
+        <button data-demo="https://stripe.com">stripe.com</button>
+        <button data-demo="https://linear.app">linear.app</button>
+      </div>
+      <div class="scan-progress" id="scanProgress">
+        <div class="scan-log" id="scanLog"></div>
+        <div class="scan-progress-top"><span id="scanLabel">Connecting…</span><span id="scanPercent">0%</span></div>
+        <div class="scan-progress-bar"><div class="scan-progress-fill" id="scanFill"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><div class="hairline"></div></div>
+
+<!-- ============ TERMINAL SHOWCASE ============ -->
+<section class="section" id="terminal">
+  <div class="wrap term-showcase-grid">
+    <div>
+      <div class="eyebrow reveal">Under the hood</div>
+      <h2 class="reveal">Built like a tool developers actually trust</h2>
+      <p class="reveal">Every scan runs the same pipeline you'd write yourself — fetch, parse, fingerprint, audit — surfaced as readable logs, not a black box.</p>
+      <ul class="term-list reveal">
+        <li><span class="term-list-icon">01</span>Terminal-style activity log for every step of the scan</li>
+        <li><span class="term-list-icon">02</span>Syntax-highlighted source, formatted and line-numbered</li>
+        <li><span class="term-list-icon">03</span>Framework, library and hosting fingerprinting</li>
+        <li><span class="term-list-icon">04</span>SEO, metadata, and security header audit in one pass</li>
+      </ul>
+    </div>
+    <div class="term-window reveal">
+      <div class="term-window-bar"><span></span><span></span><span></span><span class="term-window-title">sage — scan.log</span></div>
+      <pre class="term-window-body" id="termShowcase"></pre>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><div class="hairline"></div></div>
+
+<!-- ============ FEATURES ============ -->
+<section class="section" id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow reveal">Capabilities</div>
+      <h2 class="reveal">Twelve ways to read a website</h2>
+      <p class="reveal">Each one runs automatically, every scan. Nothing extra to enable.</p>
+    </div>
+    <div class="feat-grid" id="featGrid"></div>
+  </div>
+</section>
+
+<div class="wrap"><div class="hairline"></div></div>
+
+<!-- ============ DIFFERENTIATION / DASHBOARD ============ -->
+<section class="section" id="dashboard">
+  <div class="wrap dash-grid">
+    <div>
+      <div class="eyebrow reveal">Beyond source</div>
+      <h2 class="reveal">Read a site's whole architecture, not just its files</h2>
+      <p class="reveal">Stack detection, SEO scoring, security posture and DOM structure — rendered as one dashboard, wired to the same scan.</p>
+      <div class="dash-list reveal">
+        <div class="dash-item"><span class="dash-check">✓</span>Technology stack detection</div>
+        <div class="dash-item"><span class="dash-check">✓</span>DOM structure visualization</div>
+        <div class="dash-item"><span class="dash-check">✓</span>Performance &amp; asset overview</div>
+        <div class="dash-item"><span class="dash-check">✓</span>Security header analysis</div>
+      </div>
+    </div>
+    <div class="dash-card reveal">
+      <div class="dash-card-head">
+        <span>seo-snapshot.json</span>
+        <div class="seo-ring" id="seoRing" style="--pct:0"><span id="seoRingNum">0</span></div>
+      </div>
+      <div class="dash-bars" id="dashBars"></div>
+      <div class="dash-card-foot">
+        <span class="tag tag-on">React</span><span class="tag tag-on">Tailwind</span><span class="tag tag-on">Vercel</span><span class="tag">Next.js</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wrap"><div class="hairline"></div></div>
+
+<!-- ============ TRUST ============ -->
+<section class="section" id="trust">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow reveal">Trust</div>
+      <h2 class="reveal">Nothing you paste is ever stored</h2>
+      <p class="reveal">The scan runs in your browser. The request goes out, the response comes back, and it stays on your machine.</p>
+    </div>
+    <div class="trust-grid" id="trustGrid"></div>
+  </div>
+</section>
+
+<div class="wrap"><div class="hairline"></div></div>
+
+<!-- ============ FAQ ============ -->
+<section class="section" id="faq">
+  <div class="wrap faq-grid">
+    <div>
+      <div class="eyebrow reveal">FAQ</div>
+      <h2 class="reveal">Before you paste a URL</h2>
+    </div>
+    <div class="faq-list reveal" id="faqList"></div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-band">
+  <div class="wrap">
+    <div class="cta-inner reveal">
+      <h2>Stop guessing how a site is built.</h2>
+      <p>Paste a URL and see the code — and everything around it — right now.</p>
+      <a href="#scanner" class="btn btn-primary btn-lg">Analyze website <span class="arrow">→</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <a href="#top" class="logo"><svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M16 2L28 9V23L16 30L4 23V9L16 2Z" stroke="currentColor" stroke-width="1.5"/></svg><span class="logo-word">source<span class="logo-x">×</span>sage</span></a>
+      <p>A developer tool for reading the code, structure and stack behind any website.</p>
+    </div>
+    <div class="footer-cols">
+      <div class="footer-col"><h4>Product</h4><a href="#scanner">Scanner</a><a href="#features">Capabilities</a><a href="#trust">Trust</a></div>
+      <div class="footer-col"><h4>Resources</h4><a href="#faq">FAQ</a><a href="#terminal">How it works</a></div>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>© <span id="year"></span> Source × Sage</span>
+    <span class="footer-tag">Built for people who read the page source.</span>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
